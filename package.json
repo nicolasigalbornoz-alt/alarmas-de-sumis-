@@ -1,0 +1,15 @@
+{
+  "name": "alarmas-de-sumis",
+  "private": true,
+  "description": "Alertas de renovación de suministros - Municipio de Morón (Cloudflare Worker + D1)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260925.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.140.0"
+  }
+}

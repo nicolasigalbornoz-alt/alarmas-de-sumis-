@@ -1,0 +1,4 @@
+# Copiar a .dev.vars (no se sube) para `npm run dev`. Valores de prueba, no los reales.
+SESSION_SECRET=cambiar-por-una-cadena-larga-al-azar
+# El mismo valor que el .dev.vars del Worker `suministros`, si se prueban los dos juntos.
+SSO_SECRET=cambiar-por-otra-cadena-larga-al-azar

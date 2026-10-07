@@ -1,0 +1,304 @@
+/* Piezas propias del sitio de Alertas. La base (fuentes Neo Sans, tokens
+   --moron-*, header/footer municipal, .card, .btn, .form-control, .alert,
+   .badge, .search-bar, .empty-state, login) es global.css, la hoja
+   institucional de sde_v2 / formulario-17, sin modificar. */
+
+[hidden] {
+  display: none !important;
+}
+
+.municipal-account form {
+  display: contents;
+}
+
+.card-destacada {
+  border-top: 4px solid var(--moron-red);
+}
+
+/* ---------------------------------------------------------------- contadores */
+
+.stats {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  margin-bottom: 24px;
+}
+.stat {
+  background: #fff;
+  border: 1px solid var(--moron-border);
+  border-top: 4px solid #cfcfcf;
+  padding: 18px 20px;
+}
+.stat strong {
+  display: block;
+  font: 900 36px/1 "Neo Sans Ultra", "Neo Sans", sans-serif;
+  letter-spacing: -0.025em;
+}
+.stat span {
+  color: #666;
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+  text-transform: uppercase;
+}
+.stat-vencido { border-top-color: var(--moron-red-dark); }
+.stat-vencido strong { color: var(--moron-red-dark); }
+.stat-por-vencer { border-top-color: #d99a1c; }
+.stat-por-vencer strong { color: #a36d0a; }
+.stat-completado { border-top-color: #6b9a6b; }
+.stat-total { border-top-color: var(--moron-charcoal); }
+
+/* ---------------------------------------------------------------- filtro por etiqueta */
+
+.filtro-etiqueta {
+  margin-bottom: 24px;
+}
+.filtro-etiqueta > span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.filtro-etiqueta .form-control {
+  max-width: 320px;
+  min-height: 38px;
+  padding-bottom: 6px;
+  padding-top: 6px;
+  width: auto;
+}
+.filtro-etiqueta small {
+  color: #777;
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------- formularios para agregar */
+
+.alerta-add-form {
+  margin-bottom: 16px;
+}
+.campo-suministros {
+  flex: 2 1 320px;
+}
+.campo-corto {
+  flex: 0 1 190px;
+}
+.alerta-add-form + .alert {
+  margin-bottom: 16px;
+}
+
+/* ---------------------------------------------------------------- selector múltiple */
+
+.multi-select {
+  position: relative;
+}
+.multi-select-trigger {
+  cursor: pointer;
+  text-align: left;
+}
+.multi-select-trigger:disabled {
+  cursor: not-allowed;
+}
+.multi-select-panel {
+  background: #fff;
+  border: 1px solid #d6d6d6;
+  border-top: 2px solid var(--moron-red);
+  box-shadow: 0 10px 26px #0000001f;
+  left: 0;
+  max-width: 640px;
+  padding: 8px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+}
+.multi-select-search {
+  margin-bottom: 6px;
+  min-height: 40px;
+  padding: 8px 10px;
+}
+.multi-select-options {
+  max-height: 320px;
+  overflow-y: auto;
+}
+.multi-select-option {
+  align-items: flex-start;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 400;
+  gap: 8px;
+  line-height: 1.4;
+  padding: 7px 8px;
+}
+.multi-select-option:hover {
+  background: #fff6f6;
+}
+.multi-select-option input {
+  margin-top: 2px;
+}
+.multi-select-options .empty-state {
+  font-size: 13px;
+  padding: 16px;
+}
+
+/* ---------------------------------------------------------------- calendario de cobertura */
+
+/* Referencias: mismo componente que el calendario de global.css. */
+.calendario-leyenda i.cubierto-vigente { background: #5b6b7d; }
+.calendario-leyenda i.cubierto-por_vencer { background: #d99a1c; }
+.calendario-leyenda i.cubierto-vencido { background: var(--moron-red-dark); }
+.calendario-leyenda i.cubierto-completado { background: #9fbf9f; }
+
+.calendario-cobertura {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.calendario-fila {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(120px, 220px) minmax(0, 1fr);
+}
+.calendario-label {
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendario-meses {
+  display: grid;
+  gap: 3px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+.celda {
+  background: #f1f1f1;
+  border-radius: 3px;
+  color: #999;
+  font-size: 11px;
+  padding: 7px 0;
+  text-align: center;
+}
+.celda.hoy {
+  box-shadow: inset 0 0 0 2px var(--moron-charcoal);
+  font-weight: 700;
+}
+.cubierto-vigente { background: #5b6b7d; color: #fff; }
+.cubierto-por_vencer { background: #d99a1c; color: #fff; }
+.cubierto-vencido { background: var(--moron-red-dark); color: #fff; }
+.cubierto-completado { background: #9fbf9f; color: #fff; }
+
+/* ---------------------------------------------------------------- listado */
+
+.alerta-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+.alerta {
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid var(--moron-border);
+  border-left: 4px solid #9aa9bd;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  justify-content: space-between;
+  padding: 16px 18px;
+}
+.alerta.nivel-vencido { background: #fffafa; border-left-color: var(--moron-red-dark); }
+.alerta.nivel-por-vencer { background: #fffcf5; border-left-color: #d99a1c; }
+.alerta.nivel-completado { border-left-color: #6b9a6b; opacity: 0.8; }
+.alerta-info {
+  flex: 1 1 380px;
+}
+.alerta-info strong {
+  font: 700 16px "Neo Sans", sans-serif;
+}
+.alerta-info p {
+  color: #444;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 4px 0 6px;
+}
+.alerta-info small {
+  color: #666;
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.alerta-etiqueta,
+.alerta-aviso {
+  align-items: center;
+  color: #555;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 8px;
+}
+.alerta-etiqueta {
+  max-width: 360px;
+}
+.alerta-etiqueta .form-control,
+.alerta-aviso .form-control {
+  min-height: 34px;
+  padding: 6px 10px;
+}
+.alerta-aviso .form-control {
+  width: 72px;
+}
+.alerta-acciones {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  justify-content: flex-end;
+}
+.alerta-acciones .badge {
+  letter-spacing: 0.04em;
+  padding: 5px 9px;
+  text-transform: uppercase;
+}
+/* global.css trae badge-success / -warning / -muted; falta el rojo. */
+.badge-danger {
+  background: var(--moron-red-dark);
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .filtro-etiqueta .form-control {
+    max-width: none;
+    width: 100%;
+  }
+  .campo-corto {
+    flex-basis: 100%;
+  }
+  .alerta-add-form .search-actions .btn {
+    width: 100%;
+  }
+  /* Calendario entero a la vista, sin barra: el N° arriba y los 12 meses abajo. */
+  .calendario-cobertura {
+    gap: 12px;
+  }
+  .calendario-fila {
+    gap: 4px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .calendario-meses {
+    gap: 2px;
+  }
+  .celda {
+    font-size: 9px;
+    padding: 6px 0;
+  }
+  .alerta-etiqueta {
+    max-width: none;
+  }
+}

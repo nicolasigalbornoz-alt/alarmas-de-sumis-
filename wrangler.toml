@@ -1,0 +1,32 @@
+name = "alertas-suministros"
+compatibility_date = "2025-01-01"
+keep_vars = true
+
+# Sitio de Alertas de renovación, aparte del de Suministros. Sirve ./public
+# como assets y exige sesión antes de entregar cualquier página
+# (run_worker_first, ver worker/index.ts).
+main = "worker/index.ts"
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+not_found_handling = "none"
+
+[vars]
+EJERCICIO = "2026"
+# Sitio de Suministros (enlace del encabezado y del pie).
+SUMINISTROS_URL = "https://suministros.moron-presupuesto.workers.dev"
+
+# MISMA base que el Worker `suministros`: los suministros y los usuarios salen
+# de ahí. Este Worker no crea tablas salvo la suya (sql/0002_alertas.sql, que
+# también está entre las migraciones de Suministros). Ver README.md, paso 1.
+[[d1_databases]]
+binding = "DB"
+database_name = "suministros_db"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Secrets (no van acá):
+#   wrangler secret put SESSION_SECRET   clave aleatoria propia de este sitio
+#   wrangler secret put SSO_SECRET       LA MISMA que en el Worker `suministros`
