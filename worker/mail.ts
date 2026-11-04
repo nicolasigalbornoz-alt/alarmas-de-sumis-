@@ -116,9 +116,62 @@ ${enlace}
   return { asunto, html, texto };
 }
 
+interface Correo {
+  para: string[];
+  asunto: string;
+  html: string;
+  texto: string;
+}
+
+interface Envio {
+  ok: boolean;
+  detalle: string;
+}
+
+/** Manda desde el Gmail dueño del script de Google (docs/apps-script.gs). */
+async function enviarPorAppsScript(env: Env, c: Correo): Promise<Envio> {
+  const resp = await fetch(env.APPS_SCRIPT_URL!, {
+    method: "POST",
+    // Apps Script sólo lee el cuerpo, por eso el token va adentro. Responde con una
+    // redirección (302) que fetch sigue como GET: el envío ya se hizo en el POST.
+    headers: { "content-type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ token: env.APPS_SCRIPT_TOKEN, to: c.para, subject: c.asunto, html: c.html, text: c.texto }),
+    redirect: "follow",
+  });
+  const cuerpo = await resp.text();
+  let datos: { ok?: boolean; error?: string } | null = null;
+  try {
+    datos = JSON.parse(cuerpo);
+  } catch {
+    /* no era JSON: típicamente la página de acceso de Google (el script no está publicado para "Cualquier persona") */
+  }
+  if (!resp.ok || !datos?.ok) {
+    return { ok: false, detalle: `El script de Google respondió ${resp.status}: ${datos?.error ?? cuerpo.slice(0, 200)}` };
+  }
+  return { ok: true, detalle: "Enviado por el script de Google." };
+}
+
+async function enviarPorResend(env: Env, c: Correo): Promise<Envio> {
+  const resp = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      from: env.MAIL_FROM || "Alertas de suministros <onboarding@resend.dev>",
+      to: c.para,
+      subject: c.asunto,
+      html: c.html,
+      text: c.texto,
+    }),
+  });
+  if (!resp.ok) return { ok: false, detalle: `Resend respondió ${resp.status}: ${(await resp.text()).slice(0, 300)}` };
+  return { ok: true, detalle: "Enviado por Resend." };
+}
+
 /** Manda el mail resumen del día. `hoy` sólo se pasa en pruebas. */
 export async function enviarAvisos(env: Env, hoy: string = hoyAR()): Promise<Resultado> {
-  if (!env.RESEND_API_KEY) return { ok: false, enviados: 0, detalle: "Falta el secret RESEND_API_KEY." };
+  const usaScript = Boolean(env.APPS_SCRIPT_URL);
+  if (usaScript && !env.APPS_SCRIPT_TOKEN) return { ok: false, enviados: 0, detalle: "Falta el secret APPS_SCRIPT_TOKEN." };
+  if (!usaScript && !env.RESEND_API_KEY) return { ok: false, enviados: 0, detalle: "Falta configurar el envío: APPS_SCRIPT_URL (Gmail) o RESEND_API_KEY (Resend)." };
   const para = destinos(env);
   if (para.length === 0) return { ok: false, enviados: 0, detalle: "Falta el secret MAIL_DESTINOS (o no tiene mails válidos)." };
 
@@ -127,21 +180,9 @@ export async function enviarAvisos(env: Env, hoy: string = hoyAR()): Promise<Res
   if (lista.length === 0) return { ok: true, enviados: 0, detalle: "No hay avisos para mandar hoy." };
 
   const { asunto, html, texto } = armarMail(env, hoy, lista);
-  const resp = await fetch(env.RESEND_URL || "https://api.resend.com/emails", {
-    method: "POST",
-    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      from: env.MAIL_FROM || "Alertas de suministros <onboarding@resend.dev>",
-      to: para,
-      subject: asunto,
-      html,
-      text: texto,
-    }),
-  });
-  if (!resp.ok) {
-    const cuerpo = (await resp.text()).slice(0, 300);
-    return { ok: false, enviados: 0, detalle: `Resend respondió ${resp.status}: ${cuerpo}` };
-  }
+  const correo = { para, asunto, html, texto };
+  const r = usaScript ? await enviarPorAppsScript(env, correo) : await enviarPorResend(env, correo);
+  if (!r.ok) return { ok: false, enviados: 0, detalle: r.detalle };
 
   // Recién con el mail aceptado se marca como enviado: si falla, reintenta mañana.
   await env.DB.batch(
@@ -149,5 +190,5 @@ export async function enviarAvisos(env: Env, hoy: string = hoyAR()): Promise<Res
       env.DB.prepare("INSERT OR IGNORE INTO alertas_envios (alerta_id, tipo, vence) VALUES (?, ?, ?)").bind(p.alerta.id, p.tipo, p.alerta.vence),
     ),
   );
-  return { ok: true, enviados: lista.length, detalle: `Mail enviado a ${para.length} destinatario(s) con ${lista.length} aviso(s).` };
+  return { ok: true, enviados: lista.length, detalle: `${r.detalle} Destinatarios: ${para.length}. Avisos: ${lista.length}.` };
 }
