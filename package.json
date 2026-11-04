@@ -1,7 +1,7 @@
 {
   "name": "alarmas-de-sumis",
   "private": true,
-  "description": "Alertas de renovación de suministros - Municipio de Morón (Cloudflare Worker + D1)",
+  "description": "Alertas de vencimiento de suministros - Secretaría de Salud, Municipio de Morón (Cloudflare Worker + D1)",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
