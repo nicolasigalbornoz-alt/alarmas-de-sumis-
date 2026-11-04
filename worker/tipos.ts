@@ -3,7 +3,7 @@ export interface Env {
   ASSETS: Fetcher;
   /** Dirección pública del sitio, para el enlace del mail. */
   SITIO_URL?: string;
-  /** Secrets del envío de mails (ver README). Sin ellos no se manda nada. */
+  /** Secrets del envío de mails (ver README). Sin ellos no se manda nada. Si hay APPS_SCRIPT_URL se usa el script de Google; si no, Resend. */
   RESEND_API_KEY?: string;
   /** Direcciones destino separadas por coma. */
   MAIL_DESTINOS?: string;
@@ -13,6 +13,10 @@ export interface Env {
   CRON_TOKEN?: string;
   /** Opcional: otra URL de la API de Resend (pruebas locales). */
   RESEND_URL?: string;
+  /** Alternativa a Resend: dirección /exec del script de Google (docs/apps-script.gs) que manda desde un Gmail. */
+  APPS_SCRIPT_URL?: string;
+  /** Clave compartida con ese script. */
+  APPS_SCRIPT_TOKEN?: string;
 }
 
 export interface Alerta {

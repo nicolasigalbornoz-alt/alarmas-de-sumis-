@@ -29,7 +29,20 @@ resumen** a la lista fija de la secretaría, con:
 Cada alerta avisa una vez por tipo y por fecha de vencimiento (si se cambia la fecha, vuelve a
 avisar). Las completadas no avisan. Si una alerta se carga ya dentro del período de aviso,
 avisa en la próxima corrida. Si Resend falla, no se marca como enviado y reintenta al día
-siguiente. El envío es con [Resend](https://resend.com).
+siguiente. El envío puede hacerse **desde un Gmail** (script de Google, sin dominio ni DNS) o con
+[Resend](https://resend.com); si está cargado `APPS_SCRIPT_URL` se usa el script, si no, Resend.
+
+### Opción A: desde un Gmail (sin dominio)
+
+1. Con la cuenta de Gmail que va a figurar como remitente, seguir las instrucciones de
+   `docs/apps-script.gs` (pegar el script, definir la propiedad `TOKEN`, publicarlo como
+   aplicación web "Ejecutar como: Yo / Acceso: Cualquier persona" y copiar la URL `/exec`).
+2. Cargar en el Worker: `APPS_SCRIPT_URL` (esa URL), `APPS_SCRIPT_TOKEN` (el mismo `TOKEN`),
+   `MAIL_DESTINOS` (mails separados por coma, cualquier dominio) y opcionalmente `CRON_TOKEN`.
+
+Límite de Gmail: unos 100 destinatarios por día para cuentas comunes; sobra para un resumen diario.
+
+### Opción B: Resend (requiere verificar un dominio para mandar a otras direcciones)
 
 Secrets (Worker → Settings → Variables and Secrets, o `npx wrangler secret put <NOMBRE>`):
 
