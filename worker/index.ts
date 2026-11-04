@@ -4,20 +4,8 @@
 // la fecha de vencimiento. Los datos viven en la tabla `alertas_salud` de D1,
 // que el propio Worker crea la primera vez que se usa.
 
-interface Env {
-  DB: D1Database;
-  ASSETS: Fetcher;
-}
-
-interface Alerta {
-  id: number;
-  numero: string;
-  etiqueta: string;
-  vence: string;
-  aviso_dias: number;
-  completado: number;
-  creado_en: string;
-}
+import { enviarAvisos } from "./mail";
+import { asegurarTablas, AVISO_POR_DEFECTO, type Alerta, type Env } from "./tipos";
 
 interface Entrada {
   numero?: unknown;
@@ -27,8 +15,6 @@ interface Entrada {
   completado?: unknown;
 }
 
-const AVISO_POR_DEFECTO = 5;
-
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -36,25 +22,6 @@ const json = (data: unknown, status = 200) =>
   });
 
 const error = (status: number, mensaje: string) => json({ ok: false, error: mensaje }, status);
-
-let tablaLista = false;
-async function asegurarTabla(db: D1Database): Promise<void> {
-  if (tablaLista) return;
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS alertas_salud (
-         id          INTEGER PRIMARY KEY AUTOINCREMENT,
-         numero      TEXT NOT NULL,
-         etiqueta    TEXT NOT NULL,
-         vence       TEXT NOT NULL,
-         aviso_dias  INTEGER NOT NULL DEFAULT ${AVISO_POR_DEFECTO},
-         completado  INTEGER NOT NULL DEFAULT 0,
-         creado_en   TEXT NOT NULL DEFAULT (datetime('now'))
-       )`,
-    )
-    .run();
-  tablaLista = true;
-}
 
 function fechaValida(v: unknown): v is string {
   if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
@@ -149,13 +116,26 @@ async function actualizar(env: Env, id: number, request: Request): Promise<Respo
 }
 
 async function quitar(env: Env, id: number): Promise<Response> {
-  const r = await env.DB.prepare("DELETE FROM alertas_salud WHERE id = ?").bind(id).run();
+  const [r] = await env.DB.batch([
+    env.DB.prepare("DELETE FROM alertas_salud WHERE id = ?").bind(id),
+    env.DB.prepare("DELETE FROM alertas_envios WHERE alerta_id = ?").bind(id),
+  ]);
   if (!r.meta.changes) return error(404, "La alerta no existe.");
   return json({ ok: true });
 }
 
+// Prueba manual del envío; sólo existe si se cargó el secret CRON_TOKEN.
+async function ejecutarMail(env: Env, request: Request): Promise<Response> {
+  const token = env.CRON_TOKEN;
+  if (!token) return error(404, "Ruta inexistente.");
+  if (request.headers.get("authorization") !== `Bearer ${token}`) return error(401, "No autorizado.");
+  const r = await enviarAvisos(env);
+  return json(r, r.ok ? 200 : 500);
+}
+
 async function api(request: Request, env: Env, url: URL): Promise<Response> {
   const metodo = request.method;
+  if (url.pathname === "/api/mail/ejecutar" && metodo === "POST") return ejecutarMail(env, request);
   if (metodo !== "GET") {
     const origin = request.headers.get("origin");
     if (origin && origin !== url.origin) return error(403, "Origen no permitido.");
@@ -163,7 +143,7 @@ async function api(request: Request, env: Env, url: URL): Promise<Response> {
       return error(415, "Se espera JSON.");
     }
   }
-  await asegurarTabla(env.DB);
+  await asegurarTablas(env.DB);
 
   if (url.pathname === "/api/alertas") {
     if (metodo === "GET") return listar(env);
@@ -186,6 +166,16 @@ function conSeguridad(resp: Response): Response {
 }
 
 export default {
+  // Cron Trigger diario (ver wrangler.toml).
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      enviarAvisos(env).then(
+        (r) => console.log(r.ok ? "avisos:" : "avisos fallidos:", r.detalle),
+        (e) => console.error("avisos: error", e),
+      ),
+    );
+  },
+
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     try {
