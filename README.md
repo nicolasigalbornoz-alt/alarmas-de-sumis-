@@ -46,7 +46,7 @@ npx wrangler d1 execute suministros_db --remote --file sql/0002_alertas.sql
 
 **2. Worker.** Workers & Pages → Create → *Import a repository* → este repo.
 Comando de deploy: `npx wrangler deploy` (sin comando de build). El nombre del
-Worker sale de `wrangler.toml`: `alertas-suministros`.
+Worker sale de `wrangler.toml`: `alarmas-de-sumis`.
 
 **3. Secrets** (Worker → Settings → Variables and Secrets, tipo *Secret*):
 

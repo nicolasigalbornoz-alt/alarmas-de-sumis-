@@ -1,4 +1,4 @@
-name = "alertas-suministros"
+name = "alarmas-de-sumis"
 compatibility_date = "2025-01-01"
 keep_vars = true
 
@@ -25,7 +25,7 @@ SUMINISTROS_URL = "https://suministros.moron-presupuesto.workers.dev"
 [[d1_databases]]
 binding = "DB"
 database_name = "suministros_db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "664ea2d3-98ae-407e-a79b-ec17294970ef"
 
 # Secrets (no van acá):
 #   wrangler secret put SESSION_SECRET   clave aleatoria propia de este sitio
