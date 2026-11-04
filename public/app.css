@@ -1,0 +1,148 @@
+/* Piezas propias del sitio de alertas. La base (fuentes Neo Sans, tokens
+   --moron-*, header/footer municipal, .card, .btn, .form-control, .alert,
+   .search-bar, .empty-state) es global.css, sin modificar. */
+
+[hidden] {
+  display: none !important;
+}
+
+.card-destacada {
+  border-top: 4px solid var(--moron-red);
+}
+
+/* ---------------------------------------------------------------- aviso destacado */
+
+.atencion {
+  background: #fff7e6;
+  border: 1px solid #e7c36b;
+  border-left: 6px solid #d99a1c;
+  margin-bottom: 24px;
+  padding: 18px 22px;
+}
+.atencion h2 {
+  font-size: 18px;
+  margin: 0 0 10px;
+}
+.atencion ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.atencion li + li {
+  margin-top: 6px;
+}
+
+/* ---------------------------------------------------------------- contadores */
+
+.stats {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-bottom: 24px;
+}
+.stat {
+  background: #fff;
+  border: 1px solid var(--moron-border);
+  border-top: 4px solid #cfcfcf;
+  padding: 18px 20px;
+}
+.stat strong {
+  display: block;
+  font: 900 36px/1 "Neo Sans Ultra", "Neo Sans", sans-serif;
+  letter-spacing: -0.025em;
+}
+.stat span {
+  color: #666;
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+  text-transform: uppercase;
+}
+.stat-vencido { border-top-color: var(--moron-red-dark); }
+.stat-vencido strong { color: var(--moron-red-dark); }
+.stat-por-vencer { border-top-color: #d99a1c; }
+.stat-por-vencer strong { color: #a36d0a; }
+.stat-vigente { border-top-color: var(--moron-charcoal); }
+.stat-completado { border-top-color: #6b9a6b; }
+
+/* ---------------------------------------------------------------- formulario */
+
+.alerta-form {
+  align-items: end;
+}
+.alerta-form .campo-corto {
+  max-width: 140px;
+}
+
+/* ---------------------------------------------------------------- lista */
+
+.alerta-lista {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.alerta {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--moron-border);
+  border-left: 6px solid #cfcfcf;
+  display: grid;
+  gap: 12px 20px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 14px 18px;
+}
+.alerta-vencido { border-left-color: var(--moron-red-dark); }
+.alerta-por-vencer { border-left-color: #d99a1c; background: #fffaf0; }
+.alerta-vigente { border-left-color: var(--moron-charcoal); }
+.alerta-completado { border-left-color: #6b9a6b; opacity: 0.7; }
+
+.alerta-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.alerta-etiqueta {
+  color: #666;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+.alerta-numero {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.alerta-detalle {
+  color: #555;
+  font-size: 13px;
+}
+.alerta-chip {
+  background: #eee;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+.alerta-vencido .alerta-chip { background: var(--moron-red-dark); color: #fff; }
+.alerta-por-vencer .alerta-chip { background: #f4d38a; color: #5c3d00; }
+.alerta-completado .alerta-chip { background: #dcebdc; color: #2f5a2f; }
+
+.alerta-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.btn-peligro {
+  color: var(--moron-red-dark);
+}
+
+@media (max-width: 720px) {
+  .alerta {
+    grid-template-columns: 1fr;
+  }
+  .alerta-form .campo-corto {
+    max-width: none;
+  }
+}
