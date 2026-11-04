@@ -15,13 +15,44 @@ Las alertas se pueden marcar como completadas, editar o eliminar.
 - **Cloudflare Worker** (`worker/index.ts`): API `/api/alertas` y entrega de la página.
 - **Página** (`public/index.html`, `app.js`, `app.css`) con la estética institucional
   (`global.css`, fuentes Neo Sans, logo).
-- **Datos** en D1, tabla `alertas_salud`: el Worker la crea sola la primera vez que se usa.
+- **Datos** en D1, tablas `alertas_salud` y `alertas_envios` (mails ya mandados): el Worker las crea solo la primera vez que se usa.
+- **Mail diario** (`worker/mail.ts`): Cron Trigger + Resend.
+
+## Avisos por mail
+
+Todos los días a las 8:00 (hora argentina) un Cron Trigger del Worker manda **un solo mail
+resumen** a la lista fija de la secretaría, con:
+
+- las alertas que **entraron en su período de aviso** (vencimiento − días de aviso), y
+- las que **vencen hoy**.
+
+Cada alerta avisa una vez por tipo y por fecha de vencimiento (si se cambia la fecha, vuelve a
+avisar). Las completadas no avisan. Si una alerta se carga ya dentro del período de aviso,
+avisa en la próxima corrida. Si Resend falla, no se marca como enviado y reintenta al día
+siguiente. El envío es con [Resend](https://resend.com).
+
+Secrets (Worker → Settings → Variables and Secrets, o `npx wrangler secret put <NOMBRE>`):
+
+| Nombre           | Valor                                                                                   |
+|------------------|-----------------------------------------------------------------------------------------|
+| `RESEND_API_KEY` | API key de Resend                                                                       |
+| `MAIL_DESTINOS`  | mails de la secretaría separados por coma                                               |
+| `MAIL_FROM`      | remitente, ej. `Alertas de suministros <alertas@tudominio.gob.ar>` (dominio verificado en Resend). Si falta se usa `onboarding@resend.dev`, que sólo entrega al mail dueño de la cuenta de Resend (sirve para probar) |
+| `CRON_TOKEN`     | opcional: habilita la prueba manual de abajo                                            |
+
+Prueba manual (sólo existe si se cargó `CRON_TOKEN`; manda el mail de hoy si hay algo pendiente):
+
+```bash
+curl -X POST https://<worker>/api/mail/ejecutar -H "authorization: Bearer <CRON_TOKEN>"
+```
+
+Sin `RESEND_API_KEY` o `MAIL_DESTINOS` el Worker no manda nada y lo deja anotado en los logs.
 
 ## Puesta en Cloudflare
 
 Workers & Pages → el repositorio conectado despliega con `npx wrangler deploy`
-(sin comando de build). La base es la de `wrangler.toml` (`database_id`); no hay
-secrets ni variables.
+(sin comando de build). La base es la de `wrangler.toml` (`database_id`). Los secrets
+son sólo los del mail (ver arriba) y son opcionales.
 
 > La página **no tiene ingreso con usuario**: quien tenga la dirección puede cargar,
 > editar y borrar alertas. Para restringirla, activar Cloudflare Access sobre el Worker

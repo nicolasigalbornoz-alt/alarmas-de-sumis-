@@ -19,3 +19,14 @@ not_found_handling = "none"
 binding = "DB"
 database_name = "suministros_db"
 database_id = "664ea2d3-98ae-407e-a79b-ec17294970ef"
+
+# Dirección del sitio (enlace dentro del mail).
+[vars]
+SITIO_URL = "https://alarmas-de-sumis.moron-presupuesto.workers.dev"
+
+# Aviso diario por mail: 11:00 UTC = 8:00 en Argentina.
+[triggers]
+crons = ["0 11 * * *"]
+
+# Secrets del mail (no van acá): RESEND_API_KEY, MAIL_DESTINOS, y opcionales
+# MAIL_FROM y CRON_TOKEN. Ver README.
