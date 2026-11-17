@@ -2,7 +2,7 @@
 
 Página de carga de alertas de vencimiento de suministros. Cada alerta tiene:
 
-- **Rubro**: desplegable con los rubros habituales (Medicamentos, Insumos médicos, Ropa…; la lista está en `worker/tipos.ts`, `RUBROS`) y la opción **"+ Escribir otro rubro…"**, que permite poner cualquier texto (hasta 40 caracteres). Lo que se escribe queda guardado y aparece en el desplegable para elegirlo la próxima vez; "ropa" y "Ropa" se unifican.
+- **Rubro**: se elige de un desplegable. Arranca **vacío** y los rubros los administra el usuario en la pestaña **Rubros** (agregar, cambiar el nombre —las alertas que lo usan lo siguen— y eliminar los que ninguna alerta usa); también se puede crear uno desde el formulario con "+ Escribir otro rubro…". No se repiten ("Ropa" y "ropa" son uno solo; hasta 40 caracteres).
 - **N° de suministro**: texto libre, lo escribe el usuario (no se valida contra ningún sistema).
 - **Etiqueta**: qué es en concreto (por ejemplo "Paracetamol 500 mg"), texto libre y sin sugerencias.
 - **Cubre desde** (opcional, por defecto hoy) y **fecha de vencimiento**: el período que cubre el suministro.
@@ -21,7 +21,7 @@ mensual con los vencimientos de cada día y el detalle del día elegido (por def
 - **Cloudflare Worker** (`worker/index.ts`): API `/api/alertas` y entrega de la página.
 - **Página** (`public/index.html`, `app.js`, `app.css`) con la estética institucional
   (`global.css`, fuentes Neo Sans, logo).
-- **Datos** en D1, tablas `alertas_salud` y `alertas_envios` (mails ya mandados): el Worker las crea solo la primera vez que se usa.
+- **Datos** en D1, tablas `alertas_salud`, `rubros` y `alertas_envios` (mails ya mandados): el Worker las crea solo la primera vez que se usa.
 - **Mail diario** (`worker/mail.ts`): Cron Trigger + Resend.
 
 ## Avisos por mail

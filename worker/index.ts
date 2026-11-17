@@ -5,10 +5,11 @@
 // que el propio Worker crea la primera vez que se usa.
 
 import { enviarAvisos } from "./mail";
-import { asegurarTablas, AVISO_POR_DEFECTO, RUBROS, type Alerta, type Env } from "./tipos";
+import { asegurarTablas, AVISO_POR_DEFECTO, type Alerta, type Env, type Rubro } from "./tipos";
 
 interface Entrada {
   rubro?: unknown;
+  nombre?: unknown;
   numero?: unknown;
   etiqueta?: unknown;
   vence?: unknown;
@@ -37,27 +38,64 @@ function texto(v: unknown, max: number): string | null {
   return t.length > 0 && t.length <= max ? t : null;
 }
 
-/** Rubros del desplegable: los habituales y, después, los que los usuarios fueron escribiendo. */
-async function listaRubros(env: Env): Promise<string[]> {
-  const { results } = await env.DB.prepare("SELECT DISTINCT rubro FROM alertas_salud WHERE rubro IS NOT NULL AND rubro <> ''").all<{ rubro: string }>();
-  const vistos = new Set<string>(RUBROS.map((r) => r.toLowerCase()));
-  const propios: string[] = [];
-  for (const { rubro } of results) {
-    if (vistos.has(rubro.toLowerCase())) continue;
-    vistos.add(rubro.toLowerCase());
-    propios.push(rubro);
-  }
-  propios.sort((a, b) => a.localeCompare(b, "es"));
-  return [...RUBROS, ...propios];
+/** Rubros administrados en la pestaña Rubros, por orden alfabético, con cuántas alertas usa cada uno. */
+async function listaRubros(env: Env): Promise<Rubro[]> {
+  const { results } = await env.DB.prepare(
+    "SELECT r.id, r.nombre, (SELECT COUNT(*) FROM alertas_salud a WHERE a.rubro = r.nombre) AS alertas FROM rubros r",
+  ).all<Rubro>();
+  return results.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 }
 
-/** Rubro en texto libre (hasta 40 caracteres). Si ya existe con otras mayúsculas se usa esa grafía, para no duplicarlo. */
-async function rubroElegido(env: Env, v: unknown): Promise<string | null> {
+/** Nombre de rubro limpio (espacios colapsados, hasta 40 caracteres) o null si no sirve. */
+function nombreRubro(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const limpio = v.replace(/\s+/g, " ").trim();
-  if (!limpio || limpio.length > 40) return null;
-  const existente = (await listaRubros(env)).find((r) => r.toLowerCase() === limpio.toLowerCase());
-  return existente ?? limpio;
+  return limpio && limpio.length <= 40 ? limpio : null;
+}
+
+/** El rubro de una alerta: si no existe todavía ("Escribir otro rubro") se crea; si existe con otras mayúsculas, se usa esa grafía. */
+async function asegurarRubro(env: Env, v: unknown): Promise<string | null> {
+  const limpio = nombreRubro(v);
+  if (!limpio) return null;
+  const existente = (await listaRubros(env)).find((r) => r.nombre.toLowerCase() === limpio.toLowerCase());
+  if (existente) return existente.nombre;
+  await env.DB.prepare("INSERT INTO rubros (nombre) VALUES (?)").bind(limpio).run();
+  return limpio;
+}
+
+async function agregarRubro(env: Env, request: Request): Promise<Response> {
+  const d = await leerJson(request);
+  const nombre = nombreRubro(d?.nombre);
+  if (!nombre) return error(400, "Escribí el nombre del rubro (hasta 40 caracteres).");
+  if ((await listaRubros(env)).some((r) => r.nombre.toLowerCase() === nombre.toLowerCase())) return error(409, "Ya existe ese rubro.");
+  const r = await env.DB.prepare("INSERT INTO rubros (nombre) VALUES (?)").bind(nombre).run();
+  return json({ ok: true, id: r.meta.last_row_id }, 201);
+}
+
+async function renombrarRubro(env: Env, id: number, request: Request): Promise<Response> {
+  const d = await leerJson(request);
+  const nombre = nombreRubro(d?.nombre);
+  if (!nombre) return error(400, "Escribí el nombre del rubro (hasta 40 caracteres).");
+  const todos = await listaRubros(env);
+  const actual = todos.find((r) => r.id === id);
+  if (!actual) return error(404, "El rubro no existe.");
+  if (todos.some((r) => r.id !== id && r.nombre.toLowerCase() === nombre.toLowerCase())) return error(409, "Ya existe otro rubro con ese nombre.");
+  // Las alertas que lo usan pasan al nombre nuevo.
+  await env.DB.batch([
+    env.DB.prepare("UPDATE rubros SET nombre = ? WHERE id = ?").bind(nombre, id),
+    env.DB.prepare("UPDATE alertas_salud SET rubro = ? WHERE rubro = ?").bind(nombre, actual.nombre),
+  ]);
+  return json({ ok: true });
+}
+
+async function quitarRubro(env: Env, id: number): Promise<Response> {
+  const actual = (await listaRubros(env)).find((r) => r.id === id);
+  if (!actual) return error(404, "El rubro no existe.");
+  if (actual.alertas > 0) {
+    return error(409, `No se puede eliminar "${actual.nombre}": ${actual.alertas === 1 ? "lo usa 1 alerta" : `lo usan ${actual.alertas} alertas`}. Cambiales el rubro o eliminalas primero.`);
+  }
+  await env.DB.prepare("DELETE FROM rubros WHERE id = ?").bind(id).run();
+  return json({ ok: true });
 }
 
 function avisoValido(v: unknown): number | null {
@@ -84,7 +122,7 @@ async function listar(env: Env): Promise<Response> {
 async function agregar(env: Env, request: Request): Promise<Response> {
   const d = await leerJson(request);
   if (!d) return error(400, "Datos inválidos.");
-  const rubro = await rubroElegido(env, d.rubro);
+  const rubro = await asegurarRubro(env, d.rubro);
   const numero = texto(d.numero, 40);
   const etiqueta = texto(d.etiqueta, 60);
   const aviso = d.aviso_dias === undefined || d.aviso_dias === "" ? AVISO_POR_DEFECTO : avisoValido(d.aviso_dias);
@@ -110,7 +148,7 @@ async function actualizar(env: Env, id: number, request: Request): Promise<Respo
   const valores: (string | number)[] = [];
 
   if (d.rubro !== undefined) {
-    const v = await rubroElegido(env, d.rubro);
+    const v = await asegurarRubro(env, d.rubro);
     if (!v) return error(400, "Rubro inválido (hasta 40 caracteres).");
     campos.push("rubro = ?");
     valores.push(v);
@@ -199,6 +237,15 @@ async function api(request: Request, env: Env, url: URL): Promise<Response> {
   if (url.pathname === "/api/alertas") {
     if (metodo === "GET") return listar(env);
     if (metodo === "POST") return agregar(env, request);
+  }
+  if (url.pathname === "/api/rubros") {
+    if (metodo === "GET") return json({ ok: true, rubros: await listaRubros(env) });
+    if (metodo === "POST") return agregarRubro(env, request);
+  }
+  const mr = url.pathname.match(/^\/api\/rubros\/(\d+)$/);
+  if (mr) {
+    if (metodo === "PATCH") return renombrarRubro(env, Number(mr[1]), request);
+    if (metodo === "DELETE") return quitarRubro(env, Number(mr[1]));
   }
   const m = url.pathname.match(/^\/api\/alertas\/(\d+)$/);
   if (m) {
