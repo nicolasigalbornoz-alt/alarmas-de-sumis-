@@ -174,22 +174,40 @@
     visibles.forEach(function (a) { cont.appendChild(filaAlerta(a)); });
   }
 
+  var OTRO = "__otro__";
+
+  // Desplegable: rubros habituales + los que ya escribieron + "Otro" (abre un campo de texto).
   function llenarRubros() {
     var sel = $("rubro");
-    if (sel.options.length === rubros.length + 1) return;
+    var firma = rubros.join("|");
+    if (sel.getAttribute("data-firma") === firma) return;
     var actual = sel.value;
     sel.replaceChildren();
-    var vacio = document.createElement("option");
-    vacio.value = "";
-    vacio.textContent = "Elegir rubro…";
-    sel.appendChild(vacio);
-    rubros.forEach(function (r) {
+    var opcion = function (valor, texto) {
       var o = document.createElement("option");
-      o.value = r;
-      o.textContent = r;
+      o.value = valor;
+      o.textContent = texto;
       sel.appendChild(o);
-    });
+    };
+    opcion("", "Elegir rubro…");
+    rubros.forEach(function (r) { opcion(r, r); });
+    opcion(OTRO, "+ Escribir otro rubro…");
+    sel.setAttribute("data-firma", firma);
     sel.value = actual;
+    if (sel.value !== actual) sel.value = "";
+  }
+
+  function mostrarRubroNuevo() {
+    var otro = $("rubro").value === OTRO;
+    $("rubroNuevoCampo").hidden = !otro;
+    if (otro) $("rubroNuevo").focus();
+    else $("rubroNuevo").value = "";
+  }
+  $("rubro").addEventListener("change", mostrarRubroNuevo);
+
+  // Rubro elegido en el formulario (el escrito si eligió "Otro").
+  function rubroDelFormulario() {
+    return $("rubro").value === OTRO ? $("rubroNuevo").value.replace(/\s+/g, " ").trim() : $("rubro").value;
   }
 
   function dibujar() {
@@ -454,6 +472,7 @@
   function editar(a) {
     editandoId = a.id;
     $("rubro").value = a.rubro || "";
+    mostrarRubroNuevo();
     $("numero").value = a.numero;
     $("etiqueta").value = a.etiqueta;
     $("vence").value = a.vence;
@@ -469,6 +488,7 @@
   function salirDeEdicion() {
     editandoId = null;
     $("form").reset();
+    mostrarRubroNuevo();
     $("desde").value = aIso(hoy());
     $("aviso").value = 5;
     $("formTitulo").textContent = "Nueva alerta";
@@ -482,7 +502,7 @@
   $("form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var datos = {
-      rubro: $("rubro").value,
+      rubro: rubroDelFormulario(),
       numero: $("numero").value.trim(),
       etiqueta: $("etiqueta").value.trim(),
       vence: $("vence").value,

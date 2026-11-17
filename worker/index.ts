@@ -37,8 +37,27 @@ function texto(v: unknown, max: number): string | null {
   return t.length > 0 && t.length <= max ? t : null;
 }
 
-function rubroValido(v: unknown): string | null {
-  return typeof v === "string" && (RUBROS as readonly string[]).includes(v) ? v : null;
+/** Rubros del desplegable: los habituales y, después, los que los usuarios fueron escribiendo. */
+async function listaRubros(env: Env): Promise<string[]> {
+  const { results } = await env.DB.prepare("SELECT DISTINCT rubro FROM alertas_salud WHERE rubro IS NOT NULL AND rubro <> ''").all<{ rubro: string }>();
+  const vistos = new Set<string>(RUBROS.map((r) => r.toLowerCase()));
+  const propios: string[] = [];
+  for (const { rubro } of results) {
+    if (vistos.has(rubro.toLowerCase())) continue;
+    vistos.add(rubro.toLowerCase());
+    propios.push(rubro);
+  }
+  propios.sort((a, b) => a.localeCompare(b, "es"));
+  return [...RUBROS, ...propios];
+}
+
+/** Rubro en texto libre (hasta 40 caracteres). Si ya existe con otras mayúsculas se usa esa grafía, para no duplicarlo. */
+async function rubroElegido(env: Env, v: unknown): Promise<string | null> {
+  if (typeof v !== "string") return null;
+  const limpio = v.replace(/\s+/g, " ").trim();
+  if (!limpio || limpio.length > 40) return null;
+  const existente = (await listaRubros(env)).find((r) => r.toLowerCase() === limpio.toLowerCase());
+  return existente ?? limpio;
 }
 
 function avisoValido(v: unknown): number | null {
@@ -59,17 +78,17 @@ async function listar(env: Env): Promise<Response> {
   const { results } = await env.DB.prepare(
     "SELECT id, rubro, numero, etiqueta, vence, COALESCE(desde, substr(creado_en, 1, 10)) AS desde, aviso_dias, completado, creado_en FROM alertas_salud ORDER BY completado, vence, id",
   ).all<Alerta>();
-  return json({ ok: true, alertas: results, rubros: RUBROS });
+  return json({ ok: true, alertas: results, rubros: await listaRubros(env) });
 }
 
 async function agregar(env: Env, request: Request): Promise<Response> {
   const d = await leerJson(request);
   if (!d) return error(400, "Datos inválidos.");
-  const rubro = rubroValido(d.rubro);
+  const rubro = await rubroElegido(env, d.rubro);
   const numero = texto(d.numero, 40);
   const etiqueta = texto(d.etiqueta, 60);
   const aviso = d.aviso_dias === undefined || d.aviso_dias === "" ? AVISO_POR_DEFECTO : avisoValido(d.aviso_dias);
-  if (!rubro) return error(400, "Elegí un rubro de la lista.");
+  if (!rubro) return error(400, "Elegí o escribí un rubro (hasta 40 caracteres).");
   if (!numero) return error(400, "Ingresá el número de suministro (hasta 40 caracteres).");
   if (!etiqueta) return error(400, "Ingresá una etiqueta (hasta 60 caracteres).");
   if (!fechaValida(d.vence)) return error(400, "Ingresá una fecha de vencimiento válida.");
@@ -91,8 +110,8 @@ async function actualizar(env: Env, id: number, request: Request): Promise<Respo
   const valores: (string | number)[] = [];
 
   if (d.rubro !== undefined) {
-    const v = rubroValido(d.rubro);
-    if (!v) return error(400, "Rubro inválido.");
+    const v = await rubroElegido(env, d.rubro);
+    if (!v) return error(400, "Rubro inválido (hasta 40 caracteres).");
     campos.push("rubro = ?");
     valores.push(v);
   }

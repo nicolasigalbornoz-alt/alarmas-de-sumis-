@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="preload" href="/fonts/neo-sans-ultra.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/global.css?v=20261007a" />
-  <link rel="stylesheet" href="/app.css?v=20261117c" />
+  <link rel="stylesheet" href="/app.css?v=20261117d" />
 </head>
 <body>
   <header class="municipal-header">
@@ -103,6 +103,10 @@
             <option value="">Elegir rubro…</option>
           </select>
         </label>
+        <label class="filter-field" id="rubroNuevoCampo" hidden>
+          <span>Nuevo rubro</span>
+          <input type="text" class="form-control" id="rubroNuevo" maxlength="40" placeholder="Ej. Vacunas" autocomplete="off" />
+        </label>
         <label class="filter-field">
           <span>N° de suministro</span>
           <input type="text" class="form-control" id="numero" maxlength="40" placeholder="Ej. 1234" autocomplete="off" required />
@@ -173,6 +177,6 @@
     </form>
   </dialog>
 
-  <script src="/app.js?v=20261117c" defer></script>
+  <script src="/app.js?v=20261117d" defer></script>
 </body>
 </html>
