@@ -24,6 +24,8 @@ export interface Alerta {
   numero: string;
   etiqueta: string;
   vence: string;
+  /** Desde cuándo cubre el suministro (AAAA-MM-DD); sin dato, la fecha de carga. */
+  desde: string;
   aviso_dias: number;
   completado: number;
   creado_en: string;
@@ -42,6 +44,7 @@ export async function asegurarTablas(db: D1Database): Promise<void> {
          numero      TEXT NOT NULL,
          etiqueta    TEXT NOT NULL,
          vence       TEXT NOT NULL,
+         desde       TEXT,
          aviso_dias  INTEGER NOT NULL DEFAULT ${AVISO_POR_DEFECTO},
          completado  INTEGER NOT NULL DEFAULT 0,
          creado_en   TEXT NOT NULL DEFAULT (datetime('now'))
@@ -59,5 +62,8 @@ export async function asegurarTablas(db: D1Database): Promise<void> {
        )`,
     ),
   ]);
+  // Bases creadas antes de que existiera "desde": se agrega la columna una vez.
+  const { results } = await db.prepare("PRAGMA table_info(alertas_salud)").all<{ name: string }>();
+  if (!results.some((c) => c.name === "desde")) await db.prepare("ALTER TABLE alertas_salud ADD COLUMN desde TEXT").run();
   tablasListas = true;
 }

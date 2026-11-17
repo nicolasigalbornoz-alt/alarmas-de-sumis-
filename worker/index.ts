@@ -11,6 +11,7 @@ interface Entrada {
   numero?: unknown;
   etiqueta?: unknown;
   vence?: unknown;
+  desde?: unknown;
   aviso_dias?: unknown;
   completado?: unknown;
 }
@@ -51,7 +52,7 @@ async function leerJson(request: Request): Promise<Entrada | null> {
 
 async function listar(env: Env): Promise<Response> {
   const { results } = await env.DB.prepare(
-    "SELECT id, numero, etiqueta, vence, aviso_dias, completado, creado_en FROM alertas_salud ORDER BY completado, vence, id",
+    "SELECT id, numero, etiqueta, vence, COALESCE(desde, substr(creado_en, 1, 10)) AS desde, aviso_dias, completado, creado_en FROM alertas_salud ORDER BY completado, vence, id",
   ).all<Alerta>();
   return json({ ok: true, alertas: results });
 }
@@ -66,9 +67,12 @@ async function agregar(env: Env, request: Request): Promise<Response> {
   if (!etiqueta) return error(400, "Ingresá una etiqueta (hasta 60 caracteres).");
   if (!fechaValida(d.vence)) return error(400, "Ingresá una fecha de vencimiento válida.");
   if (aviso === null) return error(400, "Los días de aviso deben ser un número entre 0 y 365.");
+  const desde = d.desde === undefined || d.desde === "" ? null : d.desde;
+  if (desde !== null && !fechaValida(desde)) return error(400, "La fecha \"Cubre desde\" no es válida.");
+  if (desde !== null && desde > d.vence) return error(400, "\"Cubre desde\" no puede ser posterior al vencimiento.");
 
-  const r = await env.DB.prepare("INSERT INTO alertas_salud (numero, etiqueta, vence, aviso_dias) VALUES (?, ?, ?, ?)")
-    .bind(numero, etiqueta, d.vence, aviso)
+  const r = await env.DB.prepare("INSERT INTO alertas_salud (numero, etiqueta, vence, desde, aviso_dias) VALUES (?, ?, ?, ?, ?)")
+    .bind(numero, etiqueta, d.vence, desde, aviso)
     .run();
   return json({ ok: true, id: r.meta.last_row_id }, 201);
 }
@@ -95,6 +99,21 @@ async function actualizar(env: Env, id: number, request: Request): Promise<Respo
     if (!fechaValida(d.vence)) return error(400, "Fecha de vencimiento inválida.");
     campos.push("vence = ?");
     valores.push(d.vence);
+  }
+  if (d.desde !== undefined) {
+    if (!fechaValida(d.desde)) return error(400, "La fecha \"Cubre desde\" no es válida.");
+    campos.push("desde = ?");
+    valores.push(d.desde);
+  }
+  if (d.vence !== undefined || d.desde !== undefined) {
+    // El período cubierto no puede quedar al revés: se compara con lo que ya estaba guardado.
+    const actual = await env.DB.prepare("SELECT vence, COALESCE(desde, substr(creado_en, 1, 10)) AS desde FROM alertas_salud WHERE id = ?")
+      .bind(id)
+      .first<{ vence: string; desde: string }>();
+    if (!actual) return error(404, "La alerta no existe.");
+    const desde = (d.desde as string | undefined) ?? actual.desde;
+    const vence = (d.vence as string | undefined) ?? actual.vence;
+    if (desde > vence) return error(400, "\"Cubre desde\" no puede ser posterior al vencimiento.");
   }
   if (d.aviso_dias !== undefined) {
     const v = avisoValido(d.aviso_dias);

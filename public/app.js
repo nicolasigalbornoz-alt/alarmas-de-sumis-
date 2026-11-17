@@ -144,7 +144,7 @@
     info.appendChild(el("span", "alerta-etiqueta", a.etiqueta));
     info.appendChild(el("strong", "alerta-numero", "N° " + a.numero));
     var avisar = new Date(aFecha(a.vence).getTime() - a.aviso_dias * DIA);
-    info.appendChild(el("span", "alerta-detalle", "Vence el " + formato(a.vence) + " · avisa desde el " + formato(aIso(avisar)) + " (" + a.aviso_dias + (a.aviso_dias === 1 ? " día" : " días") + " antes)"));
+    info.appendChild(el("span", "alerta-detalle", "Cubre del " + formato(a.desde) + " al " + formato(a.vence) + " · avisa desde el " + formato(aIso(avisar)) + " (" + a.aviso_dias + (a.aviso_dias === 1 ? " día" : " días") + " antes)"));
     fila.appendChild(info);
 
     fila.appendChild(el("span", "alerta-chip", e === "completado" ? "Completado" : textoDias(dias)));
@@ -191,7 +191,112 @@
     dibujarLista();
     dibujarEtiquetas();
     dibujarCalendario();
+    dibujarCobertura();
   }
+
+  // ------------------------------------------------------------------ cobertura por rubro
+  // Una fila por suministro con las 12 casillas del año: pintadas los meses entre
+  // "Cubre desde" y el vencimiento. Cada rubro (etiqueta) lleva arriba una barra
+  // resumen: los meses futuros que ningún suministro del rubro cubre salen rayados.
+
+  var anioCob = hoy().getFullYear();
+  var MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+  function indiceMes(iso) {
+    var p = iso.split("-");
+    return Number(p[0]) * 12 + Number(p[1]) - 1;
+  }
+  function rango(a) {
+    return { ini: indiceMes(a.desde || a.creado_en.slice(0, 10)), fin: indiceMes(a.vence) };
+  }
+  function claveRubro(t) { return t.trim().toLowerCase().replace(/\s+/g, " "); }
+
+  function agruparPorRubro() {
+    var grupos = new Map();
+    alertas.forEach(function (a) {
+      var k = claveRubro(a.etiqueta);
+      if (!grupos.has(k)) grupos.set(k, { nombre: a.etiqueta.trim(), items: [] });
+      grupos.get(k).items.push(a);
+    });
+    var lista = Array.from(grupos.values());
+    lista.forEach(function (g) { g.items.sort(function (x, y) { return x.vence < y.vence ? -1 : x.vence > y.vence ? 1 : x.id - y.id; }); });
+    return lista.sort(function (x, y) { return x.nombre.localeCompare(y.nombre, "es"); });
+  }
+
+  function celdasMeses(clasePorMes, titulo) {
+    var cont = el("div", "cob-meses");
+    var idxHoy = hoy().getFullYear() * 12 + hoy().getMonth();
+    MESES.forEach(function (m, i) {
+      var idx = anioCob * 12 + i;
+      var c = el("div", "cob-celda " + clasePorMes(idx) + (idx === idxHoy ? " hoy" : ""), m);
+      c.title = m + " " + anioCob + (idx === idxHoy ? " · mes actual" : "") + titulo(idx);
+      cont.appendChild(c);
+    });
+    return cont;
+  }
+
+  function filaCobertura(a) {
+    var r = rango(a);
+    var e = estado(a);
+    var fila = el("div", "cob-fila");
+    var label = el("div", "cob-label");
+    label.appendChild(el("strong", "", "N° " + a.numero));
+    label.appendChild(el("small", "", "vence " + formato(a.vence)));
+    fila.appendChild(label);
+    fila.appendChild(celdasMeses(
+      function (idx) { return (idx >= r.ini && idx <= r.fin ? "cubierto-" + e : "") + (idx === r.fin ? " cob-vence" : ""); },
+      function (idx) { return idx >= r.ini && idx <= r.fin ? " · cubierto" + (idx === r.fin ? " (vence el " + formato(a.vence) + ")" : "") : ""; }
+    ));
+    return fila;
+  }
+
+  function cabeceraRubro(g) {
+    var idxHoy = hoy().getFullYear() * 12 + hoy().getMonth();
+    var rangos = g.items.map(rango);
+    var cubre = function (idx) { return rangos.some(function (r) { return idx >= r.ini && idx <= r.fin; }); };
+    var huecos = [];
+    MESES.forEach(function (m, i) {
+      var idx = anioCob * 12 + i;
+      if (idx >= idxHoy && !cubre(idx)) huecos.push(m);
+    });
+
+    var cab = el("div", "cob-fila cob-cabecera");
+    var label = el("div", "cob-label");
+    label.appendChild(el("strong", "", g.nombre));
+    label.appendChild(el("small", "", g.items.length + (g.items.length === 1 ? " suministro" : " suministros")));
+    cab.appendChild(label);
+    cab.appendChild(celdasMeses(
+      function (idx) { return cubre(idx) ? "cob-cubierto" : idx >= idxHoy ? "cob-hueco" : ""; },
+      function (idx) { return cubre(idx) ? " · hay cobertura" : idx >= idxHoy ? " · sin cobertura" : ""; }
+    ));
+
+    var nota = el("p", "cob-nota" + (huecos.length ? " cob-nota-alerta" : ""));
+    if (huecos.length) nota.textContent = "Sin cobertura en: " + huecos.join(", ") + ".";
+    else if (anioCob >= hoy().getFullYear()) nota.textContent = "Cobertura completa " + (anioCob === hoy().getFullYear() ? "hasta fin de año." : "todo el año.");
+    return { cab: cab, nota: nota.textContent ? nota : null };
+  }
+
+  function dibujarCobertura() {
+    $("cobAnio").textContent = String(anioCob);
+    var cont = $("cobLista");
+    cont.replaceChildren();
+    if (!alertas.length) {
+      cont.appendChild(el("div", "empty-state", "Cargá una alerta para ver qué meses cubre."));
+      return;
+    }
+    agruparPorRubro().forEach(function (g) {
+      var bloque = el("section", "cob-grupo");
+      var c = cabeceraRubro(g);
+      bloque.appendChild(c.cab);
+      if (c.nota) bloque.appendChild(c.nota);
+      g.items.forEach(function (a) { bloque.appendChild(filaCobertura(a)); });
+      cont.appendChild(bloque);
+    });
+  }
+
+  $("cobAnterior").addEventListener("click", function () { anioCob--; dibujarCobertura(); });
+  $("cobSiguiente").addEventListener("click", function () { anioCob++; dibujarCobertura(); });
+  $("cobEsteAnio").addEventListener("click", function () { anioCob = hoy().getFullYear(); dibujarCobertura(); });
 
   // ------------------------------------------------------------------ calendario
 
@@ -317,6 +422,7 @@
     $("numero").value = a.numero;
     $("etiqueta").value = a.etiqueta;
     $("vence").value = a.vence;
+    $("desde").value = a.desde;
     $("aviso").value = a.aviso_dias;
     $("formTitulo").textContent = "Editar alerta";
     $("guardar").textContent = "Guardar cambios";
@@ -328,6 +434,7 @@
   function salirDeEdicion() {
     editandoId = null;
     $("form").reset();
+    $("desde").value = aIso(hoy());
     $("aviso").value = 5;
     $("formTitulo").textContent = "Nueva alerta";
     $("guardar").textContent = "Agregar alerta";
@@ -343,10 +450,15 @@
       numero: $("numero").value.trim(),
       etiqueta: $("etiqueta").value.trim(),
       vence: $("vence").value,
+      desde: $("desde").value || undefined,
       aviso_dias: $("aviso").value === "" ? 5 : Number($("aviso").value),
     };
     if (!datos.numero || !datos.etiqueta || !datos.vence) {
       mostrarMensaje("Completá el número, la etiqueta y la fecha de vencimiento.");
+      return;
+    }
+    if (datos.desde && datos.desde > datos.vence) {
+      mostrarMensaje("\"Cubre desde\" no puede ser posterior a la fecha de vencimiento.");
       return;
     }
     var boton = $("guardar");
@@ -396,6 +508,7 @@
 
   // ------------------------------------------------------------------ inicio
 
+  $("desde").value = aIso(hoy());
   cargar();
   // Con la página abierta: refresca cada 30 minutos (cambia el día, llegan nuevas alertas).
   setInterval(cargar, 30 * 60 * 1000);
