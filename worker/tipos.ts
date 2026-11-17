@@ -19,7 +19,7 @@ export interface Env {
   APPS_SCRIPT_TOKEN?: string;
 }
 
-/** Rubros posibles (el desplegable del formulario sale de acá). Para sumar uno, agregarlo a esta lista. */
+/** Rubros habituales: son los primeros del desplegable. Los usuarios pueden escribir otros ("Otro…") y quedan disponibles para elegir. */
 export const RUBROS = [
   "Medicamentos",
   "Insumos médicos",
@@ -34,7 +34,7 @@ export const RUBROS = [
 
 export interface Alerta {
   id: number;
-  /** Rubro general (uno de RUBROS); null en las alertas anteriores a que existiera. */
+  /** Rubro general, texto libre (en general uno de RUBROS); null en las alertas anteriores a que existiera. */
   rubro: string | null;
   numero: string;
   /** Descripción específica, texto libre. */

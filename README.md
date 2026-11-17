@@ -2,7 +2,7 @@
 
 Página de carga de alertas de vencimiento de suministros. Cada alerta tiene:
 
-- **Rubro**: desplegable con opciones fijas y generales (Medicamentos, Insumos médicos, Ropa…). La lista está en `worker/tipos.ts` (`RUBROS`); para sumar uno se agrega ahí.
+- **Rubro**: desplegable con los rubros habituales (Medicamentos, Insumos médicos, Ropa…; la lista está en `worker/tipos.ts`, `RUBROS`) y la opción **"+ Escribir otro rubro…"**, que permite poner cualquier texto (hasta 40 caracteres). Lo que se escribe queda guardado y aparece en el desplegable para elegirlo la próxima vez; "ropa" y "Ropa" se unifican.
 - **N° de suministro**: texto libre, lo escribe el usuario (no se valida contra ningún sistema).
 - **Etiqueta**: qué es en concreto (por ejemplo "Paracetamol 500 mg"), texto libre y sin sugerencias.
 - **Cubre desde** (opcional, por defecto hoy) y **fecha de vencimiento**: el período que cubre el suministro.
