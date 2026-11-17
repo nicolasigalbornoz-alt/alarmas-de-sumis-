@@ -6,7 +6,7 @@
   var DIA = 86400000;
   var $ = function (id) { return document.getElementById(id); };
   var alertas = [];
-  var rubros = [];
+  var rubros = []; // [{ id, nombre, alertas }]
   var editandoId = null;
 
   // ------------------------------------------------------------------ fechas
@@ -179,7 +179,8 @@
   // Desplegable: rubros habituales + los que ya escribieron + "Otro" (abre un campo de texto).
   function llenarRubros() {
     var sel = $("rubro");
-    var firma = rubros.join("|");
+    var nombres = rubros.map(function (r) { return r.nombre; });
+    var firma = nombres.join("|");
     if (sel.getAttribute("data-firma") === firma) return;
     var actual = sel.value;
     sel.replaceChildren();
@@ -190,7 +191,7 @@
       sel.appendChild(o);
     };
     opcion("", "Elegir rubro…");
-    rubros.forEach(function (r) { opcion(r, r); });
+    nombres.forEach(function (n) { opcion(n, n); });
     opcion(OTRO, "+ Escribir otro rubro…");
     sel.setAttribute("data-firma", firma);
     sel.value = actual;
@@ -216,6 +217,7 @@
     dibujarLista();
     dibujarCalendario();
     dibujarCobertura();
+    dibujarRubros();
   }
 
   // ------------------------------------------------------------------ cobertura por rubro
@@ -242,8 +244,9 @@
     });
     var lista = Array.from(grupos.values());
     lista.forEach(function (g) { g.items.sort(function (x, y) { return x.vence < y.vence ? -1 : x.vence > y.vence ? 1 : x.id - y.id; }); });
-    // Mismo orden que el desplegable; "Sin rubro" (alertas viejas) al final.
-    var peso = function (g) { var i = rubros.indexOf(g.nombre); return i === -1 ? rubros.length : i; };
+    // Mismo orden que el desplegable; "Sin rubro" al final.
+    var nombres = rubros.map(function (r) { return r.nombre; });
+    var peso = function (g) { var i = nombres.indexOf(g.nombre); return i === -1 ? nombres.length : i; };
     return lista.sort(function (x, y) { return peso(x) - peso(y); });
   }
 
@@ -415,17 +418,112 @@
   // ------------------------------------------------------------------ pestañas
 
   function mostrarTab(nombre) {
-    if (nombre !== "calendario") nombre = "alertas";
-    ["alertas", "calendario"].forEach(function (t) {
+    if (nombre !== "calendario" && nombre !== "rubros") nombre = "alertas";
+    ["alertas", "calendario", "rubros"].forEach(function (t) {
       $("panel-" + t).hidden = t !== nombre;
       $("tab-" + t).setAttribute("aria-selected", t === nombre ? "true" : "false");
     });
-    try { history.replaceState(null, "", nombre === "calendario" ? "#calendario" : location.pathname); } catch (e) { /* sin historial */ }
+    try { history.replaceState(null, "", nombre === "alertas" ? location.pathname : "#" + nombre); } catch (e) { /* sin historial */ }
   }
   document.querySelectorAll(".tab").forEach(function (b) {
     b.addEventListener("click", function () { mostrarTab(b.getAttribute("data-tab")); });
   });
-  mostrarTab(location.hash === "#calendario" ? "calendario" : "alertas");
+  mostrarTab(location.hash.slice(1));
+
+  // ------------------------------------------------------------------ pestaña Rubros
+  // Alta, cambio de nombre (las alertas que lo usan lo siguen) y baja (sólo si ninguna alerta lo usa).
+
+  var rubroEditandoId = null;
+
+  function dibujarRubros() {
+    var cont = $("rubrosLista");
+    cont.replaceChildren();
+    if (!rubros.length) {
+      cont.appendChild(el("div", "empty-state", "Todavía no hay rubros. Agregá el primero con el campo de arriba."));
+      return;
+    }
+    rubros.forEach(function (r) {
+      var fila = el("div", "rubro-fila");
+      if (r.id === rubroEditandoId) {
+        var campo = el("input", "form-control rubro-edicion");
+        campo.type = "text";
+        campo.maxLength = 40;
+        campo.value = r.nombre;
+        campo.setAttribute("aria-label", "Nuevo nombre del rubro " + r.nombre);
+        var guardarEdicion = function () { renombrarRubro(r, campo.value); };
+        campo.addEventListener("keydown", function (ev) {
+          if (ev.key === "Enter") { ev.preventDefault(); guardarEdicion(); }
+          if (ev.key === "Escape") { rubroEditandoId = null; dibujarRubros(); }
+        });
+        fila.appendChild(campo);
+        var acc = el("div", "alerta-acciones");
+        acc.appendChild(boton("Guardar", "btn-primary", guardarEdicion));
+        acc.appendChild(boton("Cancelar", "btn-secondary", function () { rubroEditandoId = null; dibujarRubros(); }));
+        fila.appendChild(acc);
+        cont.appendChild(fila);
+        setTimeout(function () { campo.focus(); campo.select(); }, 0);
+        return;
+      }
+      var info = el("div", "rubro-info");
+      info.appendChild(el("strong", "", r.nombre));
+      info.appendChild(el("small", "", r.alertas === 0 ? "Sin alertas" : r.alertas === 1 ? "1 alerta" : r.alertas + " alertas"));
+      fila.appendChild(info);
+      var acciones = el("div", "alerta-acciones");
+      acciones.appendChild(boton("Editar", "btn-secondary", function () { rubroEditandoId = r.id; dibujarRubros(); }));
+      var borrar = boton("Eliminar", "btn-secondary btn-peligro", function () { eliminarRubro(r); });
+      if (r.alertas > 0) {
+        borrar.disabled = true;
+        borrar.title = "No se puede eliminar: lo usan alertas. Cambiales el rubro o eliminalas primero.";
+      }
+      acciones.appendChild(borrar);
+      fila.appendChild(acciones);
+      cont.appendChild(fila);
+    });
+  }
+
+  function renombrarRubro(r, nombre) {
+    nombre = nombre.replace(/\s+/g, " ").trim();
+    if (!nombre) { mostrarMensaje("Escribí el nombre del rubro."); return; }
+    if (nombre === r.nombre) { rubroEditandoId = null; dibujarRubros(); return; }
+    pedir("PATCH", "/api/rubros/" + r.id, { nombre: nombre }).then(function () {
+      rubroEditandoId = null;
+      mostrarMensaje("Rubro actualizado.", "success");
+      return cargar();
+    }).catch(function (e) { mostrarMensaje(e.message); });
+  }
+
+  function eliminarRubro(r) {
+    confirmarCartel({
+      titulo: "¿Eliminar este rubro?",
+      aviso: "Esta acción no se puede deshacer.",
+      si: "Sí, eliminar",
+      alternativa: "¿Eliminar el rubro " + r.nombre + "?",
+      detalle: function (c) {
+        c.appendChild(el("span", "modal-rubro", "Rubro"));
+        c.appendChild(el("strong", "", r.nombre));
+      },
+    }).then(function (si) {
+      if (!si) return;
+      return pedir("DELETE", "/api/rubros/" + r.id).then(function () {
+        mostrarMensaje("Rubro eliminado.", "success");
+        return cargar();
+      });
+    }).catch(function (e) { mostrarMensaje(e.message); });
+  }
+
+  $("rubroForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var campo = $("rubroAgregar");
+    var nombre = campo.value.replace(/\s+/g, " ").trim();
+    if (!nombre) { mostrarMensaje("Escribí el nombre del rubro."); return; }
+    $("rubroAgregarBtn").disabled = true;
+    pedir("POST", "/api/rubros", { nombre: nombre }).then(function () {
+      campo.value = "";
+      mostrarMensaje("Rubro agregado.", "success");
+      return cargar();
+    }).catch(function (e) { mostrarMensaje(e.message); })
+      .then(function () { $("rubroAgregarBtn").disabled = false; campo.focus(); });
+  });
 
   // ------------------------------------------------------------------ acciones
 
@@ -433,18 +531,18 @@
     return pedir("PATCH", "/api/alertas/" + id, datos).then(cargar).catch(function (e) { mostrarMensaje(e.message); });
   }
 
-  // Cartel propio de confirmación. Resuelve true sólo con "Sí, eliminar"; Cancelar, Esc o
+  // Cartel propio de confirmación. Resuelve true sólo con el botón de confirmar; Cancelar, Esc o
   // un clic afuera del cartel resuelven false. Foco inicial en "Cancelar" (la opción segura).
-  function confirmarEliminar(a) {
+  // opciones: { titulo, aviso, si, detalle: function (contenedor), alternativa: texto del cuadro del navegador }
+  function confirmarCartel(o) {
     var dlg = $("confirmar");
-    if (typeof dlg.showModal !== "function") {
-      return Promise.resolve(window.confirm("¿Eliminar la alerta del suministro N° " + a.numero + " (" + a.etiqueta + ")?"));
-    }
+    if (typeof dlg.showModal !== "function") return Promise.resolve(window.confirm(o.alternativa));
+    $("confirmarTitulo").textContent = o.titulo;
+    $("confirmarAviso").textContent = o.aviso;
+    $("confirmarSi").textContent = o.si;
     var detalle = $("confirmarDetalle");
     detalle.replaceChildren();
-    detalle.appendChild(el("span", "modal-rubro", a.rubro || "Sin rubro"));
-    detalle.appendChild(el("strong", "", "N° " + a.numero + " · " + a.etiqueta));
-    detalle.appendChild(el("span", "", "Vence el " + formato(a.vence)));
+    o.detalle(detalle);
     return new Promise(function (resolve) {
       function alCerrar() {
         dlg.removeEventListener("close", alCerrar);
@@ -456,6 +554,20 @@
       dlg.addEventListener("close", alCerrar);
       dlg.addEventListener("click", afuera);
       dlg.showModal();
+    });
+  }
+
+  function confirmarEliminar(a) {
+    return confirmarCartel({
+      titulo: "¿Eliminar esta alerta?",
+      aviso: "Esta acción no se puede deshacer.",
+      si: "Sí, eliminar",
+      alternativa: "¿Eliminar la alerta del suministro N° " + a.numero + " (" + a.etiqueta + ")?",
+      detalle: function (c) {
+        c.appendChild(el("span", "modal-rubro", a.rubro || "Sin rubro"));
+        c.appendChild(el("strong", "", "N° " + a.numero + " · " + a.etiqueta));
+        c.appendChild(el("span", "", "Vence el " + formato(a.vence)));
+      },
     });
   }
 

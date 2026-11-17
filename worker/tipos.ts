@@ -19,22 +19,16 @@ export interface Env {
   APPS_SCRIPT_TOKEN?: string;
 }
 
-/** Rubros habituales: son los primeros del desplegable. Los usuarios pueden escribir otros ("Otro…") y quedan disponibles para elegir. */
-export const RUBROS = [
-  "Medicamentos",
-  "Insumos médicos",
-  "Material de curación",
-  "Ropa",
-  "Limpieza",
-  "Oficina y papelería",
-  "Alimentos",
-  "Equipamiento",
-  "Otros",
-] as const;
+export interface Rubro {
+  id: number;
+  nombre: string;
+  /** Cuántas alertas lo usan (sólo en los listados). */
+  alertas: number;
+}
 
 export interface Alerta {
   id: number;
-  /** Rubro general, texto libre (en general uno de RUBROS); null en las alertas anteriores a que existiera. */
+  /** Nombre de un rubro de la tabla `rubros` (se administran en la pestaña Rubros); null = sin rubro. */
   rubro: string | null;
   numero: string;
   /** Descripción específica, texto libre. */
@@ -53,6 +47,7 @@ let tablasListas = false;
 /** Crea las tablas la primera vez que se usa el Worker (idempotente). */
 export async function asegurarTablas(db: D1Database): Promise<void> {
   if (tablasListas) return;
+  const habiaRubros = await db.prepare("SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = 'rubros'").first();
   await db.batch([
     db.prepare(
       `CREATE TABLE IF NOT EXISTS alertas_salud (
@@ -65,6 +60,14 @@ export async function asegurarTablas(db: D1Database): Promise<void> {
          aviso_dias  INTEGER NOT NULL DEFAULT ${AVISO_POR_DEFECTO},
          completado  INTEGER NOT NULL DEFAULT 0,
          creado_en   TEXT NOT NULL DEFAULT (datetime('now'))
+       )`,
+    ),
+    // Rubros que administran los usuarios (empieza vacía).
+    db.prepare(
+      `CREATE TABLE IF NOT EXISTS rubros (
+         id         INTEGER PRIMARY KEY AUTOINCREMENT,
+         nombre     TEXT NOT NULL,
+         creado_en  TEXT NOT NULL DEFAULT (datetime('now'))
        )`,
     ),
     // Qué mails ya se mandaron. Incluye `vence`: si se cambia la fecha de una
@@ -82,14 +85,19 @@ export async function asegurarTablas(db: D1Database): Promise<void> {
   // Bases creadas antes de que existiera "desde": se agrega la columna una vez.
   const { results } = await db.prepare("PRAGMA table_info(alertas_salud)").all<{ name: string }>();
   if (!results.some((c) => c.name === "desde")) await db.prepare("ALTER TABLE alertas_salud ADD COLUMN desde TEXT").run();
-  if (!results.some((c) => c.name === "rubro")) {
-    await db.prepare("ALTER TABLE alertas_salud ADD COLUMN rubro TEXT").run();
-    // Las alertas ya cargadas usaban la etiqueta como rubro: si coincide con uno de la lista, se lo asigna.
-    const casos = RUBROS.map(() => "WHEN lower(trim(etiqueta)) = lower(?) THEN ?").join(" ");
-    await db
-      .prepare(`UPDATE alertas_salud SET rubro = CASE ${casos} END WHERE rubro IS NULL`)
-      .bind(...RUBROS.flatMap((r) => [r, r]))
-      .run();
+  if (!results.some((c) => c.name === "rubro")) await db.prepare("ALTER TABLE alertas_salud ADD COLUMN rubro TEXT").run();
+  if (!habiaRubros) {
+    // Primera vez con la tabla de rubros: los que ya usaban las alertas pasan a la lista, sin repetir
+    // mayúsculas ("Ropa" y "ropa" son uno solo), y las alertas se unifican con la grafía elegida.
+    const { results: usados } = await db.prepare("SELECT DISTINCT rubro FROM alertas_salud WHERE rubro IS NOT NULL AND rubro <> '' ORDER BY rubro").all<{ rubro: string }>();
+    const canonico = new Map<string, string>();
+    for (const { rubro } of usados) if (!canonico.has(rubro.toLowerCase())) canonico.set(rubro.toLowerCase(), rubro);
+    const sentencias = [...canonico.values()].map((n) => db.prepare("INSERT INTO rubros (nombre) VALUES (?)").bind(n));
+    for (const { rubro } of usados) {
+      const c = canonico.get(rubro.toLowerCase())!;
+      if (c !== rubro) sentencias.push(db.prepare("UPDATE alertas_salud SET rubro = ? WHERE rubro = ?").bind(c, rubro));
+    }
+    if (sentencias.length) await db.batch(sentencias);
   }
   tablasListas = true;
 }
