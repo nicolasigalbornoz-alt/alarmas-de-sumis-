@@ -2,8 +2,9 @@
 
 Página de carga de alertas de vencimiento de suministros. Cada alerta tiene:
 
+- **Rubro**: desplegable con opciones fijas y generales (Medicamentos, Insumos médicos, Ropa…). La lista está en `worker/tipos.ts` (`RUBROS`); para sumar uno se agrega ahí.
 - **N° de suministro**: texto libre, lo escribe el usuario (no se valida contra ningún sistema).
-- **Etiqueta**: qué es (ropa, medicamentos, lo que sea), también libre.
+- **Etiqueta**: qué es en concreto (por ejemplo "Paracetamol 500 mg"), texto libre y sin sugerencias.
 - **Cubre desde** (opcional, por defecto hoy) y **fecha de vencimiento**: el período que cubre el suministro.
 - **Días de aviso** (por defecto 5): la alerta se activa "fecha de vencimiento − días de aviso".
 
@@ -13,7 +14,7 @@ una notificación una vez por día. Esos avisos funcionan con la página abierta
 Las alertas se pueden marcar como completadas, editar o eliminar.
 
 La pestaña **Calendario** tiene, de arriba abajo: la **cobertura por rubro** (una barra de 12 meses por
-suministro, agrupados por etiqueta; las casillas se pintan entre "Cubre desde" y el vencimiento según el
+suministro, agrupados por rubro; las casillas se pintan entre "Cubre desde" y el vencimiento según el
 estado, y cada rubro resume arriba qué meses del año ningún suministro cubre, rayados), el calendario
 mensual con los vencimientos de cada día y el detalle del día elegido (por defecto, hoy).
 
