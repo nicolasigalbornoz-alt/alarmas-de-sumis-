@@ -19,9 +19,25 @@ export interface Env {
   APPS_SCRIPT_TOKEN?: string;
 }
 
+/** Rubros posibles (el desplegable del formulario sale de acá). Para sumar uno, agregarlo a esta lista. */
+export const RUBROS = [
+  "Medicamentos",
+  "Insumos médicos",
+  "Material de curación",
+  "Ropa",
+  "Limpieza",
+  "Oficina y papelería",
+  "Alimentos",
+  "Equipamiento",
+  "Otros",
+] as const;
+
 export interface Alerta {
   id: number;
+  /** Rubro general (uno de RUBROS); null en las alertas anteriores a que existiera. */
+  rubro: string | null;
   numero: string;
+  /** Descripción específica, texto libre. */
   etiqueta: string;
   vence: string;
   /** Desde cuándo cubre el suministro (AAAA-MM-DD); sin dato, la fecha de carga. */
@@ -41,6 +57,7 @@ export async function asegurarTablas(db: D1Database): Promise<void> {
     db.prepare(
       `CREATE TABLE IF NOT EXISTS alertas_salud (
          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+         rubro       TEXT,
          numero      TEXT NOT NULL,
          etiqueta    TEXT NOT NULL,
          vence       TEXT NOT NULL,
@@ -65,5 +82,14 @@ export async function asegurarTablas(db: D1Database): Promise<void> {
   // Bases creadas antes de que existiera "desde": se agrega la columna una vez.
   const { results } = await db.prepare("PRAGMA table_info(alertas_salud)").all<{ name: string }>();
   if (!results.some((c) => c.name === "desde")) await db.prepare("ALTER TABLE alertas_salud ADD COLUMN desde TEXT").run();
+  if (!results.some((c) => c.name === "rubro")) {
+    await db.prepare("ALTER TABLE alertas_salud ADD COLUMN rubro TEXT").run();
+    // Las alertas ya cargadas usaban la etiqueta como rubro: si coincide con uno de la lista, se lo asigna.
+    const casos = RUBROS.map(() => "WHEN lower(trim(etiqueta)) = lower(?) THEN ?").join(" ");
+    await db
+      .prepare(`UPDATE alertas_salud SET rubro = CASE ${casos} END WHERE rubro IS NULL`)
+      .bind(...RUBROS.flatMap((r) => [r, r]))
+      .run();
+  }
   tablasListas = true;
 }

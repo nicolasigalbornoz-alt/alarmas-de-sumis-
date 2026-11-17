@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="preload" href="/fonts/neo-sans-ultra.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/global.css?v=20261007a" />
-  <link rel="stylesheet" href="/app.css?v=20261117a" />
+  <link rel="stylesheet" href="/app.css?v=20261117b" />
 </head>
 <body>
   <header class="municipal-header">
@@ -45,7 +45,7 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">Cobertura por rubro · <span id="cobAnio"></span></h2>
-            <p class="card-intro">Qué meses cubre cada suministro, agrupados por rubro (la etiqueta). Los meses rayados no tienen ningún suministro que los cubra.</p>
+            <p class="card-intro">Qué meses cubre cada suministro, agrupados por rubro. Los meses rayados no tienen ningún suministro que los cubra.</p>
           </div>
           <div class="cal-nav">
             <button type="button" class="btn btn-secondary btn-sm" id="cobAnterior" aria-label="Año anterior">‹</button>
@@ -98,13 +98,18 @@
       </div>
       <form class="search-bar alerta-form" id="form" novalidate>
         <label class="filter-field">
+          <span>Rubro</span>
+          <select class="form-control" id="rubro" required>
+            <option value="">Elegir rubro…</option>
+          </select>
+        </label>
+        <label class="filter-field">
           <span>N° de suministro</span>
           <input type="text" class="form-control" id="numero" maxlength="40" placeholder="Ej. 1234" autocomplete="off" required />
         </label>
         <label class="filter-field">
-          <span>Etiqueta (qué es)</span>
-          <input type="text" class="form-control" id="etiqueta" maxlength="60" placeholder="Ej. Ropa, medicamentos…" list="etiquetas" autocomplete="off" required />
-          <datalist id="etiquetas"></datalist>
+          <span>Etiqueta (qué es, en concreto)</span>
+          <input type="text" class="form-control" id="etiqueta" maxlength="60" placeholder="Ej. Paracetamol 500 mg" autocomplete="off" required />
         </label>
         <label class="filter-field">
           <span>Cubre desde</span>
@@ -136,7 +141,7 @@
       <div class="search-bar">
         <label class="filter-field">
           <span>Buscar</span>
-          <input type="search" class="form-control" id="buscar" placeholder="Por número o etiqueta…" autocomplete="off" />
+          <input type="search" class="form-control" id="buscar" placeholder="Por rubro, número o etiqueta…" autocomplete="off" />
         </label>
       </div>
       <div id="lista" class="alerta-lista"></div>
@@ -154,6 +159,6 @@
     </div>
   </footer>
 
-  <script src="/app.js?v=20261117a" defer></script>
+  <script src="/app.js?v=20261117b" defer></script>
 </body>
 </html>

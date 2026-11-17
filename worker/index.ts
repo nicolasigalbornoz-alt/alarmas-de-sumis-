@@ -5,9 +5,10 @@
 // que el propio Worker crea la primera vez que se usa.
 
 import { enviarAvisos } from "./mail";
-import { asegurarTablas, AVISO_POR_DEFECTO, type Alerta, type Env } from "./tipos";
+import { asegurarTablas, AVISO_POR_DEFECTO, RUBROS, type Alerta, type Env } from "./tipos";
 
 interface Entrada {
+  rubro?: unknown;
   numero?: unknown;
   etiqueta?: unknown;
   vence?: unknown;
@@ -36,6 +37,10 @@ function texto(v: unknown, max: number): string | null {
   return t.length > 0 && t.length <= max ? t : null;
 }
 
+function rubroValido(v: unknown): string | null {
+  return typeof v === "string" && (RUBROS as readonly string[]).includes(v) ? v : null;
+}
+
 function avisoValido(v: unknown): number | null {
   const n = Number(v);
   return Number.isInteger(n) && n >= 0 && n <= 365 ? n : null;
@@ -52,17 +57,19 @@ async function leerJson(request: Request): Promise<Entrada | null> {
 
 async function listar(env: Env): Promise<Response> {
   const { results } = await env.DB.prepare(
-    "SELECT id, numero, etiqueta, vence, COALESCE(desde, substr(creado_en, 1, 10)) AS desde, aviso_dias, completado, creado_en FROM alertas_salud ORDER BY completado, vence, id",
+    "SELECT id, rubro, numero, etiqueta, vence, COALESCE(desde, substr(creado_en, 1, 10)) AS desde, aviso_dias, completado, creado_en FROM alertas_salud ORDER BY completado, vence, id",
   ).all<Alerta>();
-  return json({ ok: true, alertas: results });
+  return json({ ok: true, alertas: results, rubros: RUBROS });
 }
 
 async function agregar(env: Env, request: Request): Promise<Response> {
   const d = await leerJson(request);
   if (!d) return error(400, "Datos inválidos.");
+  const rubro = rubroValido(d.rubro);
   const numero = texto(d.numero, 40);
   const etiqueta = texto(d.etiqueta, 60);
   const aviso = d.aviso_dias === undefined || d.aviso_dias === "" ? AVISO_POR_DEFECTO : avisoValido(d.aviso_dias);
+  if (!rubro) return error(400, "Elegí un rubro de la lista.");
   if (!numero) return error(400, "Ingresá el número de suministro (hasta 40 caracteres).");
   if (!etiqueta) return error(400, "Ingresá una etiqueta (hasta 60 caracteres).");
   if (!fechaValida(d.vence)) return error(400, "Ingresá una fecha de vencimiento válida.");
@@ -71,8 +78,8 @@ async function agregar(env: Env, request: Request): Promise<Response> {
   if (desde !== null && !fechaValida(desde)) return error(400, "La fecha \"Cubre desde\" no es válida.");
   if (desde !== null && desde > d.vence) return error(400, "\"Cubre desde\" no puede ser posterior al vencimiento.");
 
-  const r = await env.DB.prepare("INSERT INTO alertas_salud (numero, etiqueta, vence, desde, aviso_dias) VALUES (?, ?, ?, ?, ?)")
-    .bind(numero, etiqueta, d.vence, desde, aviso)
+  const r = await env.DB.prepare("INSERT INTO alertas_salud (rubro, numero, etiqueta, vence, desde, aviso_dias) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(rubro, numero, etiqueta, d.vence, desde, aviso)
     .run();
   return json({ ok: true, id: r.meta.last_row_id }, 201);
 }
@@ -83,6 +90,12 @@ async function actualizar(env: Env, id: number, request: Request): Promise<Respo
   const campos: string[] = [];
   const valores: (string | number)[] = [];
 
+  if (d.rubro !== undefined) {
+    const v = rubroValido(d.rubro);
+    if (!v) return error(400, "Rubro inválido.");
+    campos.push("rubro = ?");
+    valores.push(v);
+  }
   if (d.numero !== undefined) {
     const v = texto(d.numero, 40);
     if (!v) return error(400, "Número de suministro inválido.");

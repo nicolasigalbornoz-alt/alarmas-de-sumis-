@@ -6,6 +6,7 @@
   var DIA = 86400000;
   var $ = function (id) { return document.getElementById(id); };
   var alertas = [];
+  var rubros = [];
   var editandoId = null;
 
   // ------------------------------------------------------------------ fechas
@@ -75,6 +76,8 @@
   function cargar() {
     return pedir("GET", "/api/alertas").then(function (d) {
       alertas = d.alertas;
+      rubros = d.rubros || [];
+      llenarRubros();
       dibujar();
       avisarNavegador();
     }).catch(function (e) { mostrarMensaje(e.message); });
@@ -121,7 +124,7 @@
     var ul = el("ul");
     activas.forEach(function (a) {
       var li = el("li", diasHasta(a.vence) === 0 ? "atencion-hoy" : "");
-      li.appendChild(el("strong", "", "N° " + a.numero + " · " + a.etiqueta));
+      li.appendChild(el("strong", "", (a.rubro ? a.rubro + " · " : "") + "N° " + a.numero + " · " + a.etiqueta));
       li.appendChild(document.createTextNode(" — " + textoDias(diasHasta(a.vence)).toLowerCase() + " (" + formato(a.vence) + ")"));
       ul.appendChild(li);
     });
@@ -141,8 +144,8 @@
     var fila = el("article", "alerta alerta-" + e);
 
     var info = el("div", "alerta-info");
-    info.appendChild(el("span", "alerta-etiqueta", a.etiqueta));
-    info.appendChild(el("strong", "alerta-numero", "N° " + a.numero));
+    info.appendChild(el("span", "alerta-etiqueta", a.rubro || "Sin rubro"));
+    info.appendChild(el("strong", "alerta-numero", "N° " + a.numero + " · " + a.etiqueta));
     var avisar = new Date(aFecha(a.vence).getTime() - a.aviso_dias * DIA);
     info.appendChild(el("span", "alerta-detalle", "Cubre del " + formato(a.desde) + " al " + formato(a.vence) + " · avisa desde el " + formato(aIso(avisar)) + " (" + a.aviso_dias + (a.aviso_dias === 1 ? " día" : " días") + " antes)"));
     fila.appendChild(info);
@@ -160,7 +163,7 @@
   function dibujarLista() {
     var q = $("buscar").value.trim().toLowerCase();
     var visibles = alertas.filter(function (a) {
-      return !q || a.numero.toLowerCase().indexOf(q) !== -1 || a.etiqueta.toLowerCase().indexOf(q) !== -1;
+      return !q || (a.rubro || "").toLowerCase().indexOf(q) !== -1 || a.numero.toLowerCase().indexOf(q) !== -1 || a.etiqueta.toLowerCase().indexOf(q) !== -1;
     });
     var cont = $("lista");
     cont.replaceChildren();
@@ -171,32 +174,35 @@
     visibles.forEach(function (a) { cont.appendChild(filaAlerta(a)); });
   }
 
-  function dibujarEtiquetas() {
-    var dl = $("etiquetas");
-    dl.replaceChildren();
-    var vistas = {};
-    alertas.forEach(function (a) {
-      var k = a.etiqueta.toLowerCase();
-      if (vistas[k]) return;
-      vistas[k] = true;
+  function llenarRubros() {
+    var sel = $("rubro");
+    if (sel.options.length === rubros.length + 1) return;
+    var actual = sel.value;
+    sel.replaceChildren();
+    var vacio = document.createElement("option");
+    vacio.value = "";
+    vacio.textContent = "Elegir rubro…";
+    sel.appendChild(vacio);
+    rubros.forEach(function (r) {
       var o = document.createElement("option");
-      o.value = a.etiqueta;
-      dl.appendChild(o);
+      o.value = r;
+      o.textContent = r;
+      sel.appendChild(o);
     });
+    sel.value = actual;
   }
 
   function dibujar() {
     dibujarStats();
     dibujarAtencion();
     dibujarLista();
-    dibujarEtiquetas();
     dibujarCalendario();
     dibujarCobertura();
   }
 
   // ------------------------------------------------------------------ cobertura por rubro
   // Una fila por suministro con las 12 casillas del año: pintadas los meses entre
-  // "Cubre desde" y el vencimiento. Cada rubro (etiqueta) lleva arriba una barra
+  // "Cubre desde" y el vencimiento. Cada rubro lleva arriba una barra
   // resumen: los meses futuros que ningún suministro del rubro cubre salen rayados.
 
   var anioCob = hoy().getFullYear();
@@ -209,18 +215,18 @@
   function rango(a) {
     return { ini: indiceMes(a.desde || a.creado_en.slice(0, 10)), fin: indiceMes(a.vence) };
   }
-  function claveRubro(t) { return t.trim().toLowerCase().replace(/\s+/g, " "); }
-
   function agruparPorRubro() {
     var grupos = new Map();
     alertas.forEach(function (a) {
-      var k = claveRubro(a.etiqueta);
-      if (!grupos.has(k)) grupos.set(k, { nombre: a.etiqueta.trim(), items: [] });
-      grupos.get(k).items.push(a);
+      var nombre = a.rubro || "Sin rubro";
+      if (!grupos.has(nombre)) grupos.set(nombre, { nombre: nombre, items: [] });
+      grupos.get(nombre).items.push(a);
     });
     var lista = Array.from(grupos.values());
     lista.forEach(function (g) { g.items.sort(function (x, y) { return x.vence < y.vence ? -1 : x.vence > y.vence ? 1 : x.id - y.id; }); });
-    return lista.sort(function (x, y) { return x.nombre.localeCompare(y.nombre, "es"); });
+    // Mismo orden que el desplegable; "Sin rubro" (alertas viejas) al final.
+    var peso = function (g) { var i = rubros.indexOf(g.nombre); return i === -1 ? rubros.length : i; };
+    return lista.sort(function (x, y) { return peso(x) - peso(y); });
   }
 
   function celdasMeses(clasePorMes, titulo) {
@@ -241,7 +247,7 @@
     var fila = el("div", "cob-fila");
     var label = el("div", "cob-label");
     label.appendChild(el("strong", "", "N° " + a.numero));
-    label.appendChild(el("small", "", "vence " + formato(a.vence)));
+    label.appendChild(el("small", "", a.etiqueta + " · vence " + formato(a.vence)));
     fila.appendChild(label);
     fila.appendChild(celdasMeses(
       function (idx) { return (idx >= r.ini && idx <= r.fin ? "cubierto-" + e : "") + (idx === r.fin ? " cob-vence" : ""); },
@@ -419,6 +425,7 @@
 
   function editar(a) {
     editandoId = a.id;
+    $("rubro").value = a.rubro || "";
     $("numero").value = a.numero;
     $("etiqueta").value = a.etiqueta;
     $("vence").value = a.vence;
@@ -447,14 +454,15 @@
   $("form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var datos = {
+      rubro: $("rubro").value,
       numero: $("numero").value.trim(),
       etiqueta: $("etiqueta").value.trim(),
       vence: $("vence").value,
       desde: $("desde").value || undefined,
       aviso_dias: $("aviso").value === "" ? 5 : Number($("aviso").value),
     };
-    if (!datos.numero || !datos.etiqueta || !datos.vence) {
-      mostrarMensaje("Completá el número, la etiqueta y la fecha de vencimiento.");
+    if (!datos.rubro || !datos.numero || !datos.etiqueta || !datos.vence) {
+      mostrarMensaje("Completá el rubro, el número, la etiqueta y la fecha de vencimiento.");
       return;
     }
     if (datos.desde && datos.desde > datos.vence) {
@@ -495,7 +503,7 @@
       var clave = "avisado:" + a.id + ":" + dia;
       if (guardado(clave)) return;
       guardar(clave, "1");
-      new Notification("Suministro N° " + a.numero + " · " + a.etiqueta, {
+      new Notification((a.rubro ? a.rubro + " · " : "") + "Suministro N° " + a.numero + " · " + a.etiqueta, {
         body: textoDias(diasHasta(a.vence)) + " (" + formato(a.vence) + ")",
         tag: "alerta-" + a.id,
       });

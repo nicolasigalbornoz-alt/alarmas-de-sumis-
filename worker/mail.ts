@@ -43,7 +43,7 @@ function destinos(env: Env): string[] {
 
 async function pendientes(env: Env, hoy: string): Promise<Pendiente[]> {
   const { results } = await env.DB.prepare(
-    `SELECT a.id, a.numero, a.etiqueta, a.vence, a.aviso_dias, a.completado, a.creado_en,
+    `SELECT a.id, a.rubro, a.numero, a.etiqueta, a.vence, a.aviso_dias, a.completado, a.creado_en,
             (SELECT group_concat(e.tipo) FROM alertas_envios e WHERE e.alerta_id = a.id AND e.vence = a.vence) AS enviados
        FROM alertas_salud a
       WHERE a.completado = 0 AND a.vence >= ?
@@ -63,6 +63,9 @@ async function pendientes(env: Env, hoy: string): Promise<Pendiente[]> {
   }
   return salida;
 }
+
+/** "Rubro · etiqueta" (o sólo la etiqueta si la alerta no tiene rubro). */
+const rotulo = (a: Alerta) => (a.rubro ? `${a.rubro} · ${a.etiqueta}` : a.etiqueta);
 
 function cuando(a: Alerta, hoy: string, tipo: Tipo): string {
   if (tipo === "vence") return "Vence hoy";
@@ -87,7 +90,7 @@ function armarMail(env: Env, hoy: string, lista: Pendiente[]) {
 ${items
   .map(
     (p) => `<tr>
-  <td style="padding:8px;border-bottom:1px solid #ddd"><strong>N° ${esc(p.alerta.numero)}</strong><br><span style="color:#666">${esc(p.alerta.etiqueta)}</span></td>
+  <td style="padding:8px;border-bottom:1px solid #ddd"><strong>N° ${esc(p.alerta.numero)}</strong><br><span style="color:#666">${esc(rotulo(p.alerta))}</span></td>
   <td style="padding:8px;border-bottom:1px solid #ddd">${formato(p.alerta.vence)}</td>
   <td style="padding:8px;border-bottom:1px solid #ddd"><strong>${cuando(p.alerta, hoy, p.tipo)}</strong></td>
 </tr>`,
@@ -105,7 +108,7 @@ ${enlace}
 <p style="margin-top:24px;font-size:12px;color:#888">Aviso automático. Las alertas completadas no se avisan.</p>
 </div>`;
 
-  const linea = (p: Pendiente) => `- N° ${p.alerta.numero} · ${p.alerta.etiqueta} — ${formato(p.alerta.vence)} (${cuando(p.alerta, hoy, p.tipo)})`;
+  const linea = (p: Pendiente) => `- N° ${p.alerta.numero} · ${rotulo(p.alerta)} — ${formato(p.alerta.vence)} (${cuando(p.alerta, hoy, p.tipo)})`;
   const texto = [
     `Alertas de suministros — ${formato(hoy)}`,
     hoyLista.length ? `\nVencen hoy:\n${hoyLista.map(linea).join("\n")}` : "",
