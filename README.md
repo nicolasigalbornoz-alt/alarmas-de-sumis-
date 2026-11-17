@@ -4,13 +4,18 @@ Página de carga de alertas de vencimiento de suministros. Cada alerta tiene:
 
 - **N° de suministro**: texto libre, lo escribe el usuario (no se valida contra ningún sistema).
 - **Etiqueta**: qué es (ropa, medicamentos, lo que sea), también libre.
-- **Fecha de vencimiento** y **días de aviso** (por defecto 5): la alerta se activa
-  "fecha de vencimiento − días de aviso".
+- **Cubre desde** (opcional, por defecto hoy) y **fecha de vencimiento**: el período que cubre el suministro.
+- **Días de aviso** (por defecto 5): la alerta se activa "fecha de vencimiento − días de aviso".
 
 Cuando una alerta entra en su período de aviso (o ya venció) la página muestra un
 recuadro de atención arriba de todo y, si el usuario activó los avisos del navegador,
 una notificación una vez por día. Esos avisos funcionan con la página abierta.
 Las alertas se pueden marcar como completadas, editar o eliminar.
+
+La pestaña **Calendario** tiene, de arriba abajo: la **cobertura por rubro** (una barra de 12 meses por
+suministro, agrupados por etiqueta; las casillas se pintan entre "Cubre desde" y el vencimiento según el
+estado, y cada rubro resume arriba qué meses del año ningún suministro cubre, rayados), el calendario
+mensual con los vencimientos de cada día y el detalle del día elegido (por defecto, hoy).
 
 - **Cloudflare Worker** (`worker/index.ts`): API `/api/alertas` y entrega de la página.
 - **Página** (`public/index.html`, `app.js`, `app.css`) con la estética institucional
@@ -29,7 +34,20 @@ resumen** a la lista fija de la secretaría, con:
 Cada alerta avisa una vez por tipo y por fecha de vencimiento (si se cambia la fecha, vuelve a
 avisar). Las completadas no avisan. Si una alerta se carga ya dentro del período de aviso,
 avisa en la próxima corrida. Si Resend falla, no se marca como enviado y reintenta al día
-siguiente. El envío es con [Resend](https://resend.com).
+siguiente. El envío puede hacerse **desde un Gmail** (script de Google, sin dominio ni DNS) o con
+[Resend](https://resend.com); si está cargado `APPS_SCRIPT_URL` se usa el script, si no, Resend.
+
+### Opción A: desde un Gmail (sin dominio)
+
+1. Con la cuenta de Gmail que va a figurar como remitente, seguir las instrucciones de
+   `docs/apps-script.gs` (pegar el script, definir la propiedad `TOKEN`, publicarlo como
+   aplicación web "Ejecutar como: Yo / Acceso: Cualquier persona" y copiar la URL `/exec`).
+2. Cargar en el Worker: `APPS_SCRIPT_URL` (esa URL), `APPS_SCRIPT_TOKEN` (el mismo `TOKEN`),
+   `MAIL_DESTINOS` (mails separados por coma, cualquier dominio) y opcionalmente `CRON_TOKEN`.
+
+Límite de Gmail: unos 100 destinatarios por día para cuentas comunes; sobra para un resumen diario.
+
+### Opción B: Resend (requiere verificar un dominio para mandar a otras direcciones)
 
 Secrets (Worker → Settings → Variables and Secrets, o `npx wrangler secret put <NOMBRE>`):
 

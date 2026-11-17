@@ -286,3 +286,130 @@
     padding: 12px 14px;
   }
 }
+
+/* ---------------------------------------------------------------- cobertura por rubro */
+
+.cob-leyenda {
+  color: #555;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 6px 18px;
+  margin-top: 12px;
+}
+.cob-leyenda span {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+.cob-leyenda i {
+  border-radius: 3px;
+  display: inline-block;
+  height: 12px;
+  width: 18px;
+}
+.cubierto-vigente { background: #5b6b7d; color: #fff; }
+.cubierto-por-vencer { background: #d99a1c; color: #fff; }
+.cubierto-vencido { background: var(--moron-red-dark); color: #fff; }
+.cubierto-completado { background: #9fbf9f; color: #fff; }
+.cob-hueco {
+  background: repeating-linear-gradient(135deg, #fbe3e3 0 4px, #fff 4px 8px);
+  border: 1px dashed var(--moron-red);
+  color: var(--moron-red-dark);
+}
+.cob-cubierto { background: #cfd6de; color: #2d3742; }
+.cob-leyenda i.cob-hoy { background: #fff; box-shadow: inset 0 0 0 2px var(--moron-charcoal); }
+
+.cob-lista {
+  display: grid;
+  gap: 22px;
+  margin-top: 18px;
+}
+.cob-grupo {
+  border: 1px solid var(--moron-border);
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px 16px;
+}
+.cob-fila {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(110px, 200px) minmax(0, 1fr);
+}
+.cob-cabecera {
+  border-bottom: 2px solid var(--moron-charcoal);
+  padding-bottom: 8px;
+}
+.cob-cabecera .cob-label strong {
+  font-size: 15px;
+  text-transform: uppercase;
+}
+.cob-label {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.cob-label strong {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cob-label small {
+  color: #666;
+  font-size: 11px;
+}
+.cob-meses {
+  display: grid;
+  gap: 3px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+.cob-celda {
+  background: #f1f1f1;
+  border-radius: 3px;
+  color: #999;
+  font-size: 11px;
+  padding: 7px 0;
+  text-align: center;
+}
+.cob-celda.hoy {
+  box-shadow: inset 0 0 0 2px var(--moron-charcoal);
+  font-weight: 700;
+}
+.cob-celda.cubierto-vigente { background: #5b6b7d; color: #fff; }
+.cob-celda.cubierto-por-vencer { background: #d99a1c; color: #fff; }
+.cob-celda.cubierto-vencido { background: var(--moron-red-dark); color: #fff; }
+.cob-celda.cubierto-completado { background: #9fbf9f; color: #fff; }
+.cob-celda.cob-cubierto { background: #cfd6de; color: #2d3742; font-weight: 700; }
+.cob-celda.cob-hueco {
+  background: repeating-linear-gradient(135deg, #fbe3e3 0 4px, #fff 4px 8px);
+  border: 1px dashed var(--moron-red);
+  color: var(--moron-red-dark);
+}
+.cob-celda.cob-vence {
+  box-shadow: inset -5px 0 0 rgba(0, 0, 0, 0.45);
+}
+.cob-celda.cob-vence.hoy {
+  box-shadow: inset 0 0 0 2px var(--moron-charcoal), inset -5px 0 0 rgba(0, 0, 0, 0.45);
+}
+.cob-nota {
+  color: #555;
+  font-size: 12px;
+  margin: 0 0 4px;
+}
+.cob-nota-alerta {
+  color: var(--moron-red-dark);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .cob-fila {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .cob-celda {
+    font-size: 9px;
+    padding: 6px 0;
+  }
+}

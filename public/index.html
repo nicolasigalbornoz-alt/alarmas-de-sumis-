@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="preload" href="/fonts/neo-sans-ultra.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/global.css?v=20261007a" />
-  <link rel="stylesheet" href="/app.css?v=20261104b" />
+  <link rel="stylesheet" href="/app.css?v=20261117a" />
 </head>
 <body>
   <header class="municipal-header">
@@ -44,6 +44,28 @@
       <section class="card card-destacada">
         <div class="card-header">
           <div>
+            <h2 class="card-title">Cobertura por rubro · <span id="cobAnio"></span></h2>
+            <p class="card-intro">Qué meses cubre cada suministro, agrupados por rubro (la etiqueta). Los meses rayados no tienen ningún suministro que los cubra.</p>
+          </div>
+          <div class="cal-nav">
+            <button type="button" class="btn btn-secondary btn-sm" id="cobAnterior" aria-label="Año anterior">‹</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="cobEsteAnio">Este año</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="cobSiguiente" aria-label="Año siguiente">›</button>
+          </div>
+        </div>
+        <div class="cob-leyenda" aria-label="Referencias">
+          <span><i class="cubierto-vigente"></i>Vigente</span>
+          <span><i class="cubierto-por-vencer"></i>Por vencer</span>
+          <span><i class="cubierto-vencido"></i>Vencido</span>
+          <span><i class="cubierto-completado"></i>Completado</span>
+          <span><i class="cob-hueco"></i>Sin cobertura</span>
+          <span><i class="cob-hoy"></i>Mes actual</span>
+        </div>
+        <div id="cobLista" class="cob-lista"></div>
+      </section>
+      <section class="card card-destacada">
+        <div class="card-header">
+          <div>
             <h2 class="card-title" id="calTitulo">Calendario</h2>
             <p class="card-intro">Cada día muestra los suministros que vencen. El punto amarillo marca el día en que empieza a avisar una alerta.</p>
           </div>
@@ -71,7 +93,7 @@
       <div class="card-header">
         <div>
           <h2 class="card-title" id="formTitulo">Nueva alerta</h2>
-          <p class="card-intro">La fecha de aviso se calcula sola: fecha de vencimiento menos los días de aviso.</p>
+          <p class="card-intro">El suministro se ve en el calendario de cobertura desde "Cubre desde" hasta el vencimiento. El aviso se calcula solo: vencimiento menos los días de aviso.</p>
         </div>
       </div>
       <form class="search-bar alerta-form" id="form" novalidate>
@@ -83,6 +105,10 @@
           <span>Etiqueta (qué es)</span>
           <input type="text" class="form-control" id="etiqueta" maxlength="60" placeholder="Ej. Ropa, medicamentos…" list="etiquetas" autocomplete="off" required />
           <datalist id="etiquetas"></datalist>
+        </label>
+        <label class="filter-field">
+          <span>Cubre desde</span>
+          <input type="date" class="form-control" id="desde" />
         </label>
         <label class="filter-field">
           <span>Fecha de vencimiento</span>
@@ -128,6 +154,6 @@
     </div>
   </footer>
 
-  <script src="/app.js?v=20261104b" defer></script>
+  <script src="/app.js?v=20261117a" defer></script>
 </body>
 </html>

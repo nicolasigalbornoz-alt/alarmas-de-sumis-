@@ -3,7 +3,7 @@ export interface Env {
   ASSETS: Fetcher;
   /** Dirección pública del sitio, para el enlace del mail. */
   SITIO_URL?: string;
-  /** Secrets del envío de mails (ver README). Sin ellos no se manda nada. */
+  /** Secrets del envío de mails (ver README). Sin ellos no se manda nada. Si hay APPS_SCRIPT_URL se usa el script de Google; si no, Resend. */
   RESEND_API_KEY?: string;
   /** Direcciones destino separadas por coma. */
   MAIL_DESTINOS?: string;
@@ -13,6 +13,10 @@ export interface Env {
   CRON_TOKEN?: string;
   /** Opcional: otra URL de la API de Resend (pruebas locales). */
   RESEND_URL?: string;
+  /** Alternativa a Resend: dirección /exec del script de Google (docs/apps-script.gs) que manda desde un Gmail. */
+  APPS_SCRIPT_URL?: string;
+  /** Clave compartida con ese script. */
+  APPS_SCRIPT_TOKEN?: string;
 }
 
 export interface Alerta {
@@ -20,6 +24,8 @@ export interface Alerta {
   numero: string;
   etiqueta: string;
   vence: string;
+  /** Desde cuándo cubre el suministro (AAAA-MM-DD); sin dato, la fecha de carga. */
+  desde: string;
   aviso_dias: number;
   completado: number;
   creado_en: string;
@@ -38,6 +44,7 @@ export async function asegurarTablas(db: D1Database): Promise<void> {
          numero      TEXT NOT NULL,
          etiqueta    TEXT NOT NULL,
          vence       TEXT NOT NULL,
+         desde       TEXT,
          aviso_dias  INTEGER NOT NULL DEFAULT ${AVISO_POR_DEFECTO},
          completado  INTEGER NOT NULL DEFAULT 0,
          creado_en   TEXT NOT NULL DEFAULT (datetime('now'))
@@ -55,5 +62,8 @@ export async function asegurarTablas(db: D1Database): Promise<void> {
        )`,
     ),
   ]);
+  // Bases creadas antes de que existiera "desde": se agrega la columna una vez.
+  const { results } = await db.prepare("PRAGMA table_info(alertas_salud)").all<{ name: string }>();
+  if (!results.some((c) => c.name === "desde")) await db.prepare("ALTER TABLE alertas_salud ADD COLUMN desde TEXT").run();
   tablasListas = true;
 }
