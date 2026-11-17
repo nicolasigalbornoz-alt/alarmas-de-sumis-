@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="preload" href="/fonts/neo-sans-ultra.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/global.css?v=20261007a" />
-  <link rel="stylesheet" href="/app.css?v=20261117b" />
+  <link rel="stylesheet" href="/app.css?v=20261117c" />
 </head>
 <body>
   <header class="municipal-header">
@@ -159,6 +159,20 @@
     </div>
   </footer>
 
-  <script src="/app.js?v=20261117b" defer></script>
+  <!-- Cartel de confirmación para eliminar una alerta (reemplaza al cuadro del navegador). -->
+  <dialog id="confirmar" class="modal" aria-labelledby="confirmarTitulo" aria-describedby="confirmarDetalle">
+    <form method="dialog" class="modal-caja">
+      <span class="modal-icono" aria-hidden="true">!</span>
+      <h2 id="confirmarTitulo">¿Eliminar esta alerta?</h2>
+      <div class="modal-detalle" id="confirmarDetalle"></div>
+      <p class="modal-aviso">Esta acción no se puede deshacer.</p>
+      <div class="modal-acciones">
+        <button type="submit" value="cancelar" class="btn btn-secondary" id="confirmarNo" autofocus>Cancelar</button>
+        <button type="submit" value="ok" class="btn btn-primary" id="confirmarSi">Sí, eliminar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js?v=20261117c" defer></script>
 </body>
 </html>

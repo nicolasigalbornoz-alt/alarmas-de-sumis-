@@ -415,11 +415,39 @@
     return pedir("PATCH", "/api/alertas/" + id, datos).then(cargar).catch(function (e) { mostrarMensaje(e.message); });
   }
 
+  // Cartel propio de confirmación. Resuelve true sólo con "Sí, eliminar"; Cancelar, Esc o
+  // un clic afuera del cartel resuelven false. Foco inicial en "Cancelar" (la opción segura).
+  function confirmarEliminar(a) {
+    var dlg = $("confirmar");
+    if (typeof dlg.showModal !== "function") {
+      return Promise.resolve(window.confirm("¿Eliminar la alerta del suministro N° " + a.numero + " (" + a.etiqueta + ")?"));
+    }
+    var detalle = $("confirmarDetalle");
+    detalle.replaceChildren();
+    detalle.appendChild(el("span", "modal-rubro", a.rubro || "Sin rubro"));
+    detalle.appendChild(el("strong", "", "N° " + a.numero + " · " + a.etiqueta));
+    detalle.appendChild(el("span", "", "Vence el " + formato(a.vence)));
+    return new Promise(function (resolve) {
+      function alCerrar() {
+        dlg.removeEventListener("close", alCerrar);
+        dlg.removeEventListener("click", afuera);
+        resolve(dlg.returnValue === "ok");
+      }
+      function afuera(ev) { if (ev.target === dlg) dlg.close("cancelar"); }
+      dlg.returnValue = "";
+      dlg.addEventListener("close", alCerrar);
+      dlg.addEventListener("click", afuera);
+      dlg.showModal();
+    });
+  }
+
   function eliminar(a) {
-    if (!window.confirm("¿Eliminar la alerta del suministro N° " + a.numero + " (" + a.etiqueta + ")?")) return;
-    pedir("DELETE", "/api/alertas/" + a.id).then(function () {
-      if (editandoId === a.id) salirDeEdicion();
-      return cargar();
+    confirmarEliminar(a).then(function (si) {
+      if (!si) return;
+      return pedir("DELETE", "/api/alertas/" + a.id).then(function () {
+        if (editandoId === a.id) salirDeEdicion();
+        return cargar();
+      });
     }).catch(function (e) { mostrarMensaje(e.message); });
   }
 

@@ -413,3 +413,78 @@
     padding: 6px 0;
   }
 }
+
+/* ---------------------------------------------------------------- cartel de confirmación */
+
+.modal {
+  background: #fff;
+  border: 0;
+  margin: auto; /* global.css pone margin:0 a todo y el cartel quedaba pegado arriba a la izquierda */
+  border-top: 6px solid var(--moron-red);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.4);
+  max-width: 440px;
+  padding: 0;
+  width: calc(100% - 32px);
+}
+.modal::backdrop {
+  background: rgba(20, 20, 20, 0.62);
+}
+.modal[open] {
+  animation: modal-entra 0.16s ease-out;
+}
+@keyframes modal-entra {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal[open] { animation: none; }
+}
+.modal-caja {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  padding: 26px 28px 24px;
+}
+.modal-icono {
+  align-items: center;
+  background: var(--moron-red);
+  color: #fff;
+  display: inline-flex;
+  font: 900 26px/1 "Neo Sans Ultra", "Neo Sans", sans-serif;
+  height: 46px;
+  justify-content: center;
+  width: 46px;
+}
+.modal-caja h2 {
+  font-size: 22px;
+  margin: 0;
+}
+.modal-detalle {
+  background: #f6f6f6;
+  border-left: 4px solid var(--moron-charcoal);
+  display: grid;
+  gap: 3px;
+  overflow-wrap: anywhere;
+  padding: 12px 14px;
+  width: 100%;
+}
+.modal-rubro {
+  color: #666;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.modal-aviso {
+  color: #555;
+  font-size: 13px;
+  margin: 0;
+}
+.modal-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+  width: 100%;
+}
